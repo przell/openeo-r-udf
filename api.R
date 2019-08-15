@@ -7,9 +7,7 @@ DEBUG = TRUE
 
 source("data_transformation.R")
 
-# ============================================================= 
-# RESTful web service with data as JSON arrays
-# =============================================================
+
 .measure_time = function(fun,message,envir=parent.frame()) {
   if (!DEBUG) return(eval(fun,envir = envir))
   tryCatch({
@@ -22,19 +20,12 @@ source("data_transformation.R")
   })
 }
 
+#* @apiTitle R UDF API
+#*
+#* Takes a UDFRequest containing data and code and runs the code on the data
+#* 
 #* @serializer unboxedJSON 
 #* @post /udf
-#' UDF on \code{stars} object exposed as a list
-#'
-#' @param req The incoming HTTP POST request
-#'
-#' @return The response to the HTTP POST request
-#'
-#' @description
-#' Runs user-defined functions on a \code{stars} object created from JSON arrays
-#' exposed as a list to the UDF.
-#'
-#' This function is linked to the endpoint \code{/udf}
 run_UDF.json = function(req,res) {
   if (DEBUG) print(format(Sys.time(),format = "%F %H:%M:%OS"))
   
@@ -64,22 +55,6 @@ run_UDF.json = function(req,res) {
   if (DEBUG) print(format(Sys.time(),format = "%F %H:%M:%OS"))
   res$body = json
 }
-
-
-
-# #* @apiTitle R UDF API
-# 
-# #* Takes a UDFRequest containing data and code and runs the code on the data
-# 
-# #* @param request
-# #* @post /udf
-# #* @serializer unboxedJSON
-# function(req){
-#   browser()
-#   list(msg = paste0("Thanks for the data"))
-# }
-# 
-# 
 
 #* Gets the library configuration of this udf service
 #* @get /libs
