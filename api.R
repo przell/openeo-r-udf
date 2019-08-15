@@ -5,6 +5,8 @@ library(lubridate)
 
 DEBUG = TRUE
 
+#TODO define float maximum digits
+
 source("data_transformation.R")
 
 
@@ -13,6 +15,8 @@ source("data_transformation.R")
   tryCatch({
     start = Sys.time()
     eval(fun,envir=envir)
+  },error=function(e){
+    stop(e$message)
   },finally = {
     cat(message)
     cat("\n")
@@ -24,7 +28,6 @@ source("data_transformation.R")
 #*
 #* Takes a UDFRequest containing data and code and runs the code on the data
 #* 
-#* @serializer unboxedJSON 
 #* @post /udf
 run_UDF.json = function(req,res) {
   if (DEBUG) print(format(Sys.time(),format = "%F %H:%M:%OS"))
@@ -39,21 +42,23 @@ run_UDF.json = function(req,res) {
   fun = function() {}
   formals(fun) = alist(data=) #TODO also metadata?
   body(fun) = parse(text=json_in$code$source)
-  
   #TODO check which data type comes in, then create an according data structure
   # transform data into stars
   stars_in = .measure_time(quote(json2stars_array(json_in)),"Translated list into stars. Runtime:")
   
+  rm(json_in)
   # run the UDF
   stars_out = .measure_time(quote(fun(data=stars_in)),"Executed script. Runtime:")
   #TODO build type related output transformation (user has to define dimensionality)
   # transform stars into JSON
-  json_out = .measure_time(quote(stars2json(stars_obj = stars_out, json_in = json_in)),"Translated from stars to list. Runtime:")
+  json_out = .measure_time(quote(stars2json.raster_collection_tiles(stars_obj = stars_out)),"Translated from stars to list. Runtime:")
   
   json=.measure_time(quote(toJSON(json_out,auto_unbox = TRUE)),"Prepared JSON from list. Runtime:")
   
   if (DEBUG) print(format(Sys.time(),format = "%F %H:%M:%OS"))
+  res$setHeader(name = "CONTENT-TYPE",value = "application/json")
   res$body = json
+  
 }
 
 #* Gets the library configuration of this udf service
