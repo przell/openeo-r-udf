@@ -1,9 +1,9 @@
 version: '3'
 services:
-    r-udf-service:
+    r-udf-child-service:
         build: .
-        image: r-udf-plumber:0.0.1
-        container_name: r-udf-service-test
+        image: r-udf-child:0.0.1
+        container_name: r-udf-child
         environment:
             - PLUMBER_PORT=5555
         ports:

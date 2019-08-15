@@ -1,37 +1,18 @@
-FROM r-base:3.5.0
-LABEL maintainer="Florian Lahn (florian.lahn@uni-muenster.de)"
-LABEL version="0.0.1"
-LABEL description="openeo R UDF webservice implementation"
-LABEL author1="Florian Lahn (florian.lahn@uni-muenster.de)" \
-      author2="Pramit Ghosh (pramitghosh@uni-muenster.de)"
+# start from the rocker/r-ver:3.6.1 image
+FROM rocker/r-ver:3.6.1
 
-# create the path for the user files
-RUN mkdir -p /opt/dockerfiles/
+ENV PLUMBER_PORT=5555
 
-COPY ./ /opt/dockerfiles/
+# install plumber
+RUN R -e "install.packages(c('plumber','remotes'))"
 
-# run commands to prepare the image
-# install dependencies
-# RUN apt-get -y update && apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev gdal-bin libudunits2-dev
-RUN apt-get update -qq && apt-get install -y \
-  libxml2-dev \
-  libssl-dev \
-  libcurl4-gnutls-dev \
-  libudunits2-dev \
-  libgdal-dev \
-  gdal-bin \
-  libgeos++-dev \
-  libgeos-c1v5
+WORKDIR /opt/openeo-r-udf
 
-# libxml2-dev libssl-dev libcurl4-gnutls-dev to get plumber running
-# libunits2-dev for stars and sf (gdal is required for sf)
+# copy RScripts from the current directory into the container
+COPY /*.R .
 
-# install R dependencies and install package
-RUN R --no-save -f /opt/dockerfiles/docker/install_package_with_dependencies.R
+# open port 5555 to traffic
+EXPOSE ${PLUMBER_PORT}
 
-
-
-# cmd or entrypoint for startup
-ENTRYPOINT ["R", "-q", "--no-save", "-f /opt/dockerfiles/docker/server_start.R"]
-
-EXPOSE 8010
+# when the container starts, start the main.R script
+ENTRYPOINT ["Rscript", "server_start.R"]
