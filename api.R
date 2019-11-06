@@ -2,6 +2,9 @@ library(stars)
 library(abind)
 library(raster)
 library(lubridate)
+library(tibble)
+library(dplyr)
+library(magrittr)
 
 DEBUG = FALSE
 
@@ -87,6 +90,7 @@ run_UDF.json = function(req,res) {
 #* Gets the library configuration of this udf service
 #* @get /libs
 #* @serializer unboxedJSON
+#* @preempt check-data
 get_installed_libraries = function() {
   libs = as.data.frame(installed.packages()[,c("Package","Version")])
   rownames(libs) = NULL

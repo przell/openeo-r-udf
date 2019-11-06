@@ -28,6 +28,25 @@ as.RasterCollectionTile.stars = function(from) {
 }
 setAs(from="RasterCollectionTile",to="stars",def=as.RasterCollectionTile.stars)
 
+as.HyperCube.stars = function(from) {
+  dimensions = from$dimension
+  
+  dim_sizes = sapply(dimensions$coordinates, length)
+  
+  arr = array(from$array,dim_sizes)
+  stars = st_as_stars(arr)
+  
+  dims = st_set_dimensions(stars, names=dimensions$name)
+  for (i in 1:nrow(dimensions)) {
+    dims = st_set_dimensions(dims,which=dimensions[i,"name"],values = dimensions[[i,"coordinates"]])
+  }
+  
+  dims %<>% st_dimensions(.raster=c("x","y"))
+  
+  attr(stars,"dimensions") = dims
+  
+  return(stars)
+}
 
 as.stars.RasterCollectionTiles = function(from) {
   # predefined dimension names [band][time][y][x]
