@@ -29,35 +29,34 @@ as.RasterCollectionTile.stars = function(from) {
 setAs(from="RasterCollectionTile",to="stars",def=as.RasterCollectionTile.stars)
 
 
-
-stars2json.raster_collection_tiles = function(stars_obj) {
+as.stars.RasterCollectionTiles = function(from) {
   # predefined dimension names [band][time][y][x]
   order = c("band","time","y","x")
-  stars_obj = aperm(stars_obj, order[order %in% names(dim(stars_obj))])
+  from = aperm(from, order[order %in% names(dim(from))])
   
-  if ("band" %in% names(dim(stars_obj))) {
-    band_names = st_get_dimension_values(stars_obj,"band")
+  if ("band" %in% names(dim(from))) {
+    band_names = st_get_dimension_values(from,"band")
     bands = lapply(seq_along(band_names),function(dimval) {
       list(
         id = as.character(band_names[dimval]),
-        data = stars::slice.stars(stars_obj,along="band",index=dimval)[[1]]
+        data = stars::slice.stars(from,along="band",index=dimval)[[1]]
       )
     })
   } else {
     # use attributes as bands:
-    band_names = names(stars_obj)
+    band_names = names(from)
     bands = lapply(seq_along(band_names),function(dimval) {
       list(
         id = as.character(band_names[dimval]),
-        data = stars_obj[[dimval]]
+        data = from[[dimval]]
       )
     })
   }
   
   bands = lapply(bands,function(band) {
     # add time values if available
-    if ("time" %in% names(dim(stars_obj))) {
-      values = st_get_dimension_values(stars_obj, which="time")
+    if ("time" %in% names(dim(from))) {
+      values = st_get_dimension_values(from, which="time")
       
       band$start_times = NA
       band$end_times = NA
@@ -69,31 +68,31 @@ stars2json.raster_collection_tiles = function(stars_obj) {
       
       if ("POSIXt" %in% class(values)) {
         band$start_times = values
-        band$end_times = band$start_times+st_dimensions(stars_obj)$time$delta
+        band$end_times = band$start_times+st_dimensions(from)$time$delta
       }
     }
     
     # add extent
-    if (all(c("x","y") %in% names(dim(stars_obj)))) {
-      bbox = st_bbox(stars_obj)
+    if (all(c("x","y") %in% names(dim(from)))) {
+      bbox = st_bbox(from)
       
       band$extent = list(
         top = bbox$ymax,
         bottom = bbox$ymin,
         left = bbox$xmin,
         right=bbox$xmax,
-        width = st_dimensions(stars_obj)$x$delta,
-        height = st_dimensions(stars_obj)$y$delta
+        width = st_dimensions(from)$x$delta,
+        height = st_dimensions(from)$y$delta
       )
     }
     return(band)
   })
   
-  srs = st_crs(stars_obj)$proj4string
+  srs = st_crs(from)$proj4string
   
   return(list(
     proj=srs,
     raster_collection_tiles=bands
   ))
 }
-
+setAs(to="RasterCollectionTile",from="stars",def=as.stars.RasterCollectionTiles)

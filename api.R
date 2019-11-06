@@ -69,12 +69,11 @@ run_UDF.json = function(req,res) {
   # transform data into stars
   stars_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
   
-  rm(json_in)
   # run the UDF
   stars_out = .measure_time(quote(fun(data=stars_in)),"Executed script. Runtime:")
   #TODO build type related output transformation (user has to define dimensionality)
   # transform stars into JSON
-  json_out = .measure_time(quote(stars2json.raster_collection_tiles(stars_obj = stars_out)),"Translated from stars to list. Runtime:")
+  json_out = .measure_time(quote(as(stars_out,"RasterCollectionTile")),"Translated from stars to list. Runtime:")
   
   json=.measure_time(quote(jsonlite::toJSON(json_out,auto_unbox = TRUE)),"Prepared JSON from list. Runtime:")
   
