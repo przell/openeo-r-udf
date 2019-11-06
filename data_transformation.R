@@ -1,8 +1,7 @@
-
-json2stars_array = function(json) {
+as.RasterCollectionTile.stars = function(from) {
   # raster_collection_tile order: [band][time][y][x]
   
-  arr = abind(band=json$data$raster_collection_tiles$data,along=0)
+  arr = abind(band=from$raster_collection_tiles$data,along=0)
   
   # rearrange dim order
   arr_new = aperm(arr,c(4,3,2,1))
@@ -12,13 +11,14 @@ json2stars_array = function(json) {
   dim(arr_new) = dims
   
   s = st_as_stars(arr_new)
-  start_times = as_datetime(json$data$raster_collection_tiles$start_times[[1]])
-  ymin = json$data$raster_collection_tiles[1,]$extent$south
-  xmin = json$data$raster_collection_tiles[1,]$extent$west
-  dx = json$data$raster_collection_tiles[1,]$extent$width
-  dy = json$data$raster_collection_tiles[1,]$extent$height
-  s = st_set_dimensions(s,which="x",refsys=json$data$proj, offset=xmin, delta=dx)
-  s = st_set_dimensions(s,which="y",refsys=json$data$proj,offset=ymin, delta=dy)
+  start_times = lubridate::as_datetime(from$raster_collection_tiles$start_times[[1]])
+  ymin = from$raster_collection_tiles[1,]$extent$bottom
+  xmin = from$raster_collection_tiles[1,]$extent$left
+  dx = from$raster_collection_tiles[1,]$extent$width
+  dy = from$raster_collection_tiles[1,]$extent$height
+  
+  s = st_set_dimensions(s,which="x",refsys=from$proj, offset=xmin, delta=dx)
+  s = st_set_dimensions(s,which="y",refsys=from$proj,offset=ymin, delta=dy)
   #TODO think about having a non continuous time series, e.g. just some intervals
   s = st_set_dimensions(s,which="time",offset=start_times[1],delta=mean(diff(start_times)))
   
@@ -26,6 +26,9 @@ json2stars_array = function(json) {
   
   return(s)
 }
+setAs(from="RasterCollectionTile",to="stars",def=as.RasterCollectionTile.stars)
+
+
 
 stars2json.raster_collection_tiles = function(stars_obj) {
   # predefined dimension names [band][time][y][x]
@@ -93,3 +96,4 @@ stars2json.raster_collection_tiles = function(stars_obj) {
     raster_collection_tiles=bands
   ))
 }
+
