@@ -9,7 +9,7 @@ RUN R -e "install.packages(c('plumber','remotes'))"
 WORKDIR /opt/openeo-r-udf
 
 # copy RScripts from the current directory into the container
-COPY /*.R .
+COPY /*.R ./
 
 # open port 5555 to traffic
 EXPOSE ${PLUMBER_PORT}

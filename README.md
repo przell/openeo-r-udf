@@ -11,7 +11,7 @@ The UDFs are implemented by developing an UDF API which work hand-in-hand with t
 
 1. The user uploads his/her script from the client nodes to the backends along with the process graph
 2. The backend executes the process graph and encounters the UDF in the process graph
-3. The backend seeks the services of the UDF service to execute the user's script and sends the script and intermediate data to the service through appropriate means (file-based service, RESTful web-service etc.)
+3. The backend seeks the services of the UDF service to execute the user's script and sends the script and intermediate data to the service through appropriate means
 4. The UDF service executes the script on the data and sends the result back to the backend.
 5. The backend receives the data and continues executing the process graph until the final result is obtained.
 6. The backend sends the completed result to the user's client node.
@@ -28,11 +28,13 @@ In the openEO API, the different clients interact with the different backends th
 
 ### Dependencies
 To run the API you need to have the following packages installed:
- * stars
+ * stars (>= 0.4-0)
  * jsonlite
  * plumber
  * lubridate
  * sf
+ 
+Depending on what analysis a potential UDF user can run this list needs to be extended.
 
 These can be installed by running the following:
 
@@ -45,8 +47,8 @@ Additionally on Linux systems you need to install the following libraries to all
 sudo apt-get install libudunits2-dev libgdal-dev -y
 ```
 
-### Running the API locally `openEO.R.UDF`
-The latest version of RStudio (>= 1.2) allows to run plumbers "plumb" natively. But you can run the plumb also manually by executing the code in `server_start.R`.
+### Running the API locally
+Clone this repository and use RStudio (>= 1.2) to "plumb" `api.R`. Since version 1.2 RStudio allows to run plumbers "plumb" natively. But you can run the plumb also manually by executing the code in `server_start.R`. It will require the file `api.R` and `data_transformation.R`.
 
 ### Using Docker
 Docker provides a virtual containerized environment for running software. In order to install this R package in a Docker environment, please follow these steps:

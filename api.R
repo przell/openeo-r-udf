@@ -3,8 +3,6 @@ library(abind)
 library(raster)
 library(lubridate)
 library(tibble)
-library(dplyr)
-library(magrittr)
 
 DEBUG = FALSE
 

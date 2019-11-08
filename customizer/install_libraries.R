@@ -13,7 +13,12 @@ if (!is.null(libs$cran)) {
   })
   
   for (i in seq_along(lib_names)) {
-    remotes::install_version(package = lib_names[[i]], version=lib_version[[i]])
+  if (length(lib_version[[i]]) == 0) {
+	remotes::install_version(package = lib_names[[i]],repos="https://cran.rstudio.com/")
+  } else {
+	remotes::install_version(package = lib_names[[i]], version=lib_version[[i]])
+  }
+    
   }
   
 }

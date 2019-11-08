@@ -26,8 +26,8 @@ as.RasterCollectionTile.stars = function(from) {
   #TODO think about having a non continuous time series, e.g. just some intervals
   s = stars::st_set_dimensions(s,which="time",offset=start_times[1],delta=mean(diff(start_times)))
   
-  s = st_set_dimensions(s,xy = c("x","y"))
-  st_crs(s) = st_crs(from$proj)
+  s = stars::st_set_dimensions(s,xy = c("x","y"))
+  sf::st_crs(s) = sf::st_crs(from$proj)
   
   names(s)=c("value")
   return(s)
@@ -39,8 +39,6 @@ as.HyperCube.stars = function(from) {
   dimensions = from$hypercubes[1,"dimensions"][[1]]
   dim_sizes = sapply(dimensions$coordinates, length)
   names(dim_sizes) = dimensions$name
-  
-  
   
   
   arr = array(from$hypercubes[1,"array"][[1]],dim_sizes) #assumption that only one cube is sent

@@ -15,6 +15,9 @@
 	{
 		"Package": "raster",
 		"Version": "latest"
-	}
-	]
+	},
+	{
+		"Package": "tibble",
+		"Version": "latest"
+	}]
 }
