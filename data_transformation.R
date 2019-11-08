@@ -12,16 +12,20 @@ as.RasterCollectionTile.stars = function(from) {
   dim(arr_new) = dims
   
   s = stars::st_as_stars(arr_new)
+  
   start_times = lubridate::as_datetime(from$raster_collection_tiles$start_times[[1]])
   ymin = from$raster_collection_tiles[1,]$extent$bottom
   xmin = from$raster_collection_tiles[1,]$extent$left
   dx = from$raster_collection_tiles[1,]$extent$width
   dy = from$raster_collection_tiles[1,]$extent$height
   
-  s = stars::st_set_dimensions(s,which="x",refsys=from$proj, offset=xmin, delta=dx)
-  s = stars::st_set_dimensions(s,which="y",refsys=from$proj,offset=ymin, delta=dy)
+  s = stars::st_set_dimensions(s,which="x", offset=xmin, delta=dx)
+  s = stars::st_set_dimensions(s,which="y",offset=ymin, delta=dy)
   #TODO think about having a non continuous time series, e.g. just some intervals
   s = stars::st_set_dimensions(s,which="time",offset=start_times[1],delta=mean(diff(start_times)))
+  
+  s = st_set_dimensions(s,xy = c("x","y"))
+  st_crs(s) = st_crs(from$proj)
   
   names(s)=c("value")
   return(s)
@@ -34,21 +38,29 @@ as.HyperCube.stars = function(from) {
   dim_sizes = sapply(dimensions$coordinates, length)
   names(dim_sizes) = dimensions$name
   
+  
+  
+  
   arr = array(from$hypercubes[1,"array"][[1]],dim_sizes) #assumption that only one cube is sent
   stars = stars::st_as_stars(arr) 
   
-  stars = stars::st_set_dimensions(stars, names=dimensions$name)
+  stars = stars::st_set_dimensions(stars, names=dimensions$name,xy = c("x","y"))
+  
   for (i in 1:nrow(dimensions)) {
     dimname = dimensions[i,"name"]
-    stars = stars::st_set_dimensions(stars,
-                                     which=dimname,
-                                     values = dimensions[[i,"coordinates"]])
+    if (dimname %in% attr(st_dimensions(stars),"raster")$dimensions) {
+      stars = stars::st_set_dimensions(stars,
+                                       which=dimname,
+                                       values = dimensions[[i,"coordinates"]],
+                                       is_raster=TRUE,
+                                       refsys = st_crs(from$proj))
+    } else {
+      stars = stars::st_set_dimensions(stars,
+                                       which=dimname,
+                                       values = dimensions[[i,"coordinates"]])
+    }
     
   }
-  stars = stars::st_set_dimensions(stars,xy = c("x","y")) #hardcoded
-  st_crs(stars) = st_crs(from$proj)
-  
-  
   return(stars)
 }
 setAs(from="HyperCube",to="stars",def=as.HyperCube.stars)
