@@ -13,11 +13,13 @@ as.RasterCollectionTile.stars = function(from) {
   
   s = stars::st_as_stars(arr_new)
   
+  # remember that we deal with "raster" tiles, which means images therefore assume 
+  # value ordering of the array in image coodinates (origin in the top left and downwards facing y axis)
   start_times = lubridate::as_datetime(from$raster_collection_tiles$start_times[[1]])
-  ymin = from$raster_collection_tiles[1,]$extent$bottom
+  ymin = from$raster_collection_tiles[1,]$extent$top
   xmin = from$raster_collection_tiles[1,]$extent$left
   dx = from$raster_collection_tiles[1,]$extent$width
-  dy = from$raster_collection_tiles[1,]$extent$height
+  dy = -from$raster_collection_tiles[1,]$extent$height
   
   s = stars::st_set_dimensions(s,which="x", offset=xmin, delta=dx)
   s = stars::st_set_dimensions(s,which="y",offset=ymin, delta=dy)
