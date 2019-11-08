@@ -29,8 +29,16 @@ source("data_transformation.R")
 
 #* Interprete JSON, divide code and data and assign classes
 #* @filter check-data
-function(req, res) {
+check_data = function(req, res) {
+  if (DEBUG) {
+    cat("=== Started executing at endpoint /udf ===\n")
+  }
   if (length(req$postBody) > 0) {
+    if (DEBUG) {
+      cat("Upload data:\n")
+      print(Sys.time()-as_datetime(as.numeric(req$HEADERS["date"]),tz=Sys.timezone()))
+    }
+    
     json_in = .measure_time(quote(jsonlite::fromJSON(req$postBody)),"Read json. Runtime:")
     
     req$postBody = NULL
@@ -60,28 +68,23 @@ function(req, res) {
 #* 
 #* @post /udf
 run_UDF.json = function(req,res) {
-  if (DEBUG) print(format(Sys.time(),format = "%F %H:%M:%OS"))
-  
-  cat("Started executing at endpoint /udf\n")
   
   # prepare the executable code
   fun = function() {}
-  formals(fun) = alist(data=) #TODO also metadata?
+  formals(fun) = alist(data=) #TODO also metadata from run_udf (processes api)
   body(fun) = parse(text=req$code$source)
-  #TODO check which data type comes in, then create an according data structure
   # transform data into stars
   stars_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
   
   # run the UDF
   stars_out = .measure_time(quote(fun(data=stars_in)),"Executed script. Runtime:")
-  #TODO build type related output transformation (user has to define dimensionality)
   # transform stars into JSON
-  json_out = .measure_time(quote(as(stars_out,"RasterCollectionTile")),"Translated from stars to list. Runtime:")
+  json_out = .measure_time(quote(as(stars_out,"HyperCube")),"Translated from stars to list. Runtime:")
   
   json=.measure_time(quote(jsonlite::toJSON(json_out,auto_unbox = TRUE)),"Prepared JSON from list. Runtime:")
   
-  if (DEBUG) print(format(Sys.time(),format = "%F %H:%M:%OS"))
   res$setHeader(name = "CONTENT-TYPE",value = "application/json")
+  res$setHeader(name = "date", value = Sys.time())
   res$body = json
   
   return(res)
