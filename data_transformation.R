@@ -142,7 +142,7 @@ as.stars.HyperCube = function(from) {
   dimvalues = lapply(dimnames, function (dim) {
     st_get_dimension_values(from,which=dim)
   })
-  dimensions = tibble(name = dimnames, coordinates = dimvalues)
+  dimensions = data.frame(name = dimnames, coordinates = dimvalues)
   
   crs = st_crs(from)$proj4string
   if (!is.null(crs) && is.na(crs)) crs = NULL

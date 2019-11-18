@@ -2,12 +2,10 @@ FROM rocker/r-ver:3.6.1
 
 ENV PLUMBER_PORT=5555
 
-# install plumber
-RUN R -e "install.packages(c('plumber','remotes'))"
-
 # install other required packages, like stars and lubridate
 RUN apt-get update && apt-get install libudunits2-dev libgdal-dev -y && \
-  R -e "install.packages(c('sf','lubridate','stars'),repos='https://cran.rstudio.com/')"
+  R -e "install.packages(c('plumber','remotes','sf','lubridate','stars'),repos='https://cran.rstudio.com/')" && \
+  rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/openeo-r-udf
 COPY /*.R ./

@@ -2,6 +2,7 @@ version: '3'
 services:
     r-udf-service:
         image: openeor/r-udf-base:0.1-dev
+        build: .
         container_name: r-udf-service
         environment:
             - PLUMBER_PORT=5555

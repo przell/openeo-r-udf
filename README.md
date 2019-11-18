@@ -57,7 +57,7 @@ Docker provides a virtual containerized environment for running software. In ord
 2. Make sure that Docker has been installed correctly using the following command. Details on containers and Docker version will be shown.
 ```bash
 docker info
-``
+```
 3. Run the provided `docker-compose.yml`. In the shell / console change directory to this cloned GitHub repository. Run `docker-compose up -d`.
 
 
