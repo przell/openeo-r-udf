@@ -1,18 +1,6 @@
 {
 	"cran": [
 	{
-		"Package": "stars",
-		"Version": "latest"
-	},
-	{
-		"Package": "sf",
-		"Version": "latest"
-	},
-	{
-		"Package": "lubridate",
-		"Version": "latest"
-	},
-	{
 		"Package": "raster",
 		"Version": "latest"
 	},

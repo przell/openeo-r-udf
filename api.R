@@ -1,15 +1,12 @@
 library(stars)
 library(abind)
-library(raster)
 library(lubridate)
-library(tibble)
 
 DEBUG = FALSE
 
 #TODO define float maximum digits
 
 source("data_transformation.R")
-
 
 .measure_time = function(fun,message,envir=parent.frame()) {
   if (!DEBUG) return(eval(fun,envir = envir))

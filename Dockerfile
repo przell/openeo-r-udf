@@ -1,4 +1,3 @@
-# start from the rocker/r-ver:3.6.1 image
 FROM rocker/r-ver:3.6.1
 
 ENV PLUMBER_PORT=5555
@@ -6,9 +5,11 @@ ENV PLUMBER_PORT=5555
 # install plumber
 RUN R -e "install.packages(c('plumber','remotes'))"
 
-WORKDIR /opt/openeo-r-udf
+# install other required packages, like stars and lubridate
+RUN apt-get update && apt-get install libudunits2-dev libgdal-dev -y && \
+  R -e "install.packages(c('sf','lubridate','stars'),repos='https://cran.rstudio.com/')"
 
-# copy RScripts from the current directory into the container
+WORKDIR /opt/openeo-r-udf
 COPY /*.R ./
 
 # open port 5555 to traffic

@@ -89,8 +89,9 @@ The script is merely an example and can be optimized. It calculates the minimum 
 
 ```{r,  eval=FALSE}
 port = 5555 # to be modified according to your setup
-result_with_rct = jsonlite::fromJSON(run_udf(data = "raster_collection_tile.json",code = script,port=port),simplifyVector = TRUE)
-result_with_cube = jsonlite::fromJSON(run_udf(data = "hypercube.json",code = script,port=port),simplifyVector = TRUE)
+host = "http://localhost" # modify regarding your settings
+result_with_rct = jsonlite::fromJSON(run_udf(data = "raster_collection_tile.json",code = script,host=host,port=port),simplifyVector = TRUE)
+result_with_cube = jsonlite::fromJSON(run_udf(data = "hypercube.json",code = script,host=host,port=port),simplifyVector = TRUE)
 ```
 
 The result of the run_udf is a JSON string that can be translated into an R object. The type of the object is a `HyperCube`.

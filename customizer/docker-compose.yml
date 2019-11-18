@@ -2,9 +2,11 @@ version: '3'
 services:
     r-udf-child-service:
         build: .
-        image: r-udf-stars:0.1
-        container_name: r-udf-stars
+        image: openeor/r-udf-base:0.1-dev
+        container_name: r-udf-custom
         environment:
             - PLUMBER_PORT=5555
+        volumes:
+            - libraries.json:/opt/openeo-r-udf/libraries.json
         ports:
             - "5555:5555"

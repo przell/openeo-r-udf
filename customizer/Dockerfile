@@ -1,4 +1,4 @@
-FROM r-udf-plumber:0.1
+FROM openeor/r-udf-base:0.1-dev
 
 ENV PLUMBER_PORT=5555
 
@@ -7,7 +7,8 @@ WORKDIR /opt/openeo-r-udf
 COPY /*.R .
 COPY /libraries.json .
 
-RUN apt-get update && apt-get install libudunits2-dev libgdal-dev -y
+# some R packages depend on some system libraries, make sure to install them
+# RUN apt-get update && apt-get install libudunits2-dev libgdal-dev -y
 
 RUN ["Rscript", "install_libraries.R"]
 
