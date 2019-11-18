@@ -57,23 +57,9 @@ Docker provides a virtual containerized environment for running software. In ord
 2. Make sure that Docker has been installed correctly using the following command. Details on containers and Docker version will be shown.
 ```bash
 docker info
-```
-3. Test whether installation using Docker is working correctly. A hello message should be printed on screen. 
-```bash
-docker run hello-world
-```
-4. Build the docker image by using the preconfigured settings of the `docker-compose.yml`.
-```bash
-docker-compose build r-udf-service
-```
-This will build the local image `r-udf-plumber:0.0.1` and it will take some time. In the future there will also be an image available on Dockerhub.
+``
+3. Run the provided `docker-compose.yml`. In the shell / console change directory to this cloned GitHub repository. Run `docker-compose up -d`.
 
-5. Run it using the following command.
-```bash
-docker-compose run up -d
-```
-As a default the container runs on port 5555. You can change this behavior by stating another port in the Docker environments section by `PLUMBER_PORT=5555`. If you change this, please make sure that you also adapt the port mapping for the container.
 
 ## Usage
-This package is intended to be used as part of the openEO API. The package works along with the different backends and are not supposed to accessible directly by the client. However, for testing, please refer to the the Wiki pages of this repository [here](https://github.com/Open-EO/openeo-r-udf/wiki).
-You can either run this service as a standalone service to debug your code for the usage in openeo infrastructure of a back-end that supports R UDF execution or run it in a productive environment within a openeo back-end. We are working on a way to support most of the data types that are described in the [UDF API](https://open-eo.github.io/openeo-udf/api_docs/)
+For first code examples, please have a look at `/examples/introduction.Rmd`. In combination with the two test data sets `/examples/hypercube.json` and `/examples/raster_collection_tile.json` you can start experimenting with OpenEO UDFs. In the markdown file there is a `run_udf` function defined that combines the code, the serialized data and sends it to the service for processing. The request is build according to the [API description](https://open-eo.github.io/openeo-udf/api_docs/). Currently the services offers the functionality for `POST /udf` with `HyperCubes` and `RasterCollectionTiles` as supported input data. The results are provided as a `Hypercube`.
