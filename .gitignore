@@ -1,6 +1,3 @@
-Meta
-doc
-*.RData
 *.Rproj
-*.Rhistory
-.Rproj.user
+.Rhistory
+data/

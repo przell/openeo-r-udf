@@ -1,10 +1,10 @@
 version: '3'
 services:
-    openeo-r-udf-server:
-        build: 
-            context: .
-            dockerfile: DOCKERFILE
-        image: openeo-r-udf-server:0.0.1
-        container_name: openeo-r-udf
+    r-udf-service:
+        image: openeor/r-udf-base:0.1-dev
+        build: .
+        container_name: r-udf-service
+        environment:
+            - PLUMBER_PORT=5555
         ports:
-            - "8010:8010"
+            - "5555:5555"
