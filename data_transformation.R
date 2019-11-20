@@ -139,12 +139,14 @@ setAs(to="RasterCollectionTile",from="stars",def=as.stars.RasterCollectionTiles)
 # stars -> hypercube ----
 as.stars.HyperCube = function(from) {
   dimnames=names(st_dimensions(from))
-  dimvalues = lapply(dimnames, function (dim) {
-    st_get_dimension_values(from,which=dim)
+  dimensions = lapply(dimnames, function (dim) {
+    
+    list(name=dim,
+         coordinates=st_get_dimension_values(from,which=dim))
+    
   })
-  dimensions = data.frame(name = dimnames, coordinates = dimvalues)
-  
-  crs = st_crs(from)$proj4string
+  # dimensions = data.frame(name = dimnames, coordinates = dimvalues)
+  crs = paste0("EPSG:",st_crs(from)$epsg)
   if (!is.null(crs) && is.na(crs)) crs = NULL
   return(list(id="udf_result",
               proj = as.character(crs),
