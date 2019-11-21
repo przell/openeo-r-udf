@@ -67,7 +67,18 @@ run_UDF.json = function(req,res) {
   # prepare the executable code
   fun = function() {}
   formals(fun) = alist(data=) #TODO also metadata from run_udf (processes api)
+  
+  if (!startsWith(req$code$source,"{")) {
+    req$code$source = paste0("{",req$code$source)
+  }
+  
+  if (!endsWith(req$code$source,"}")) {
+    req$code$source = paste0(req$code$source,"}")
+  }
+  
   body(fun) = parse(text=req$code$source)
+  
+  
   # transform data into stars
   stars_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
   
