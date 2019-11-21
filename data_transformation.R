@@ -41,7 +41,7 @@ as.HyperCube.stars = function(from) {
   names(dim_sizes) = dimensions$name
   
   
-  arr = array(from$hypercubes[1,"array"][[1]],dim_sizes) #assumption that only one cube is sent
+  arr = array(from$hypercubes[1,"data"][[1]],dim_sizes) #assumption that only one cube is sent
   stars = stars::st_as_stars(arr) 
   
   stars = stars::st_set_dimensions(stars, names=dimensions$name)
@@ -153,7 +153,7 @@ as.stars.HyperCube = function(from) {
                 list(
                   id="value",
                   dimensions=dimensions,
-                  array=from[[1]]
+                  data=from[[1]]
                 )# assumption that we only allow 1 attribute
               )
   )) 
