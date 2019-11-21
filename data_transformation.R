@@ -44,23 +44,21 @@ as.HyperCube.stars = function(from) {
   arr = array(from$hypercubes[1,"array"][[1]],dim_sizes) #assumption that only one cube is sent
   stars = stars::st_as_stars(arr) 
   
-  stars = stars::st_set_dimensions(stars, names=dimensions$name,xy = c("x","y"))
+  stars = stars::st_set_dimensions(stars, names=dimensions$name)
   
   for (i in 1:nrow(dimensions)) {
     dimname = dimensions[i,"name"]
-    if (dimname %in% attr(st_dimensions(stars),"raster")$dimensions) {
-      stars = stars::st_set_dimensions(stars,
-                                       which=dimname,
-                                       values = dimensions[[i,"coordinates"]],
-                                       is_raster=TRUE,
-                                       refsys = st_crs(from$proj))
-    } else {
-      stars = stars::st_set_dimensions(stars,
-                                       which=dimname,
-                                       values = dimensions[[i,"coordinates"]])
-    }
     
+    
+    stars = stars::st_set_dimensions(stars,
+                                     which=dimname,
+                                     values = dimensions[[i,"coordinates"]])
   }
+  if (all(c("x","y") %in% names(st_dimensions(stars)))) {
+    stars = stars::st_set_dimensions(stars,xy = c("x","y"))
+    st_crs(stars) = st_crs(from$proj)
+  }
+  
   return(stars)
 }
 setAs(from="HyperCube",to="stars",def=as.HyperCube.stars)
@@ -147,6 +145,7 @@ as.stars.HyperCube = function(from) {
   })
   # dimensions = data.frame(name = dimnames, coordinates = dimvalues)
   crs = paste0("EPSG:",st_crs(from)$epsg)
+  
   if (!is.null(crs) && is.na(crs)) crs = NULL
   return(list(id="udf_result",
               proj = as.character(crs),
@@ -157,6 +156,6 @@ as.stars.HyperCube = function(from) {
                   array=from[[1]]
                 )# assumption that we only allow 1 attribute
               )
-             )) 
+  )) 
 }
 setAs(to="HyperCube",from="stars",def=as.stars.HyperCube)
