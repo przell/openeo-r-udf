@@ -75,7 +75,6 @@ run_UDF.json = function(req,res) {
   if (!endsWith(req$code$source,"}")) {
     req$code$source = paste0(req$code$source,"}")
   }
-  
   body(fun) = parse(text=req$code$source)
   
   
@@ -83,11 +82,22 @@ run_UDF.json = function(req,res) {
   stars_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
   
   # run the UDF
-  stars_out = .measure_time(quote(fun(data=stars_in)),"Executed script. Runtime:")
-  # transform stars into JSON
-  json_out = .measure_time(quote(as(stars_out,"HyperCube")),"Translated from stars to list. Runtime:")
+  stars_out = .measure_time(quote(lapply(stars_in, fun)),"Executed script. Runtime:")
   
-  json=.measure_time(quote(jsonlite::toJSON(json_out,auto_unbox = TRUE)),"Prepared JSON from list. Runtime:")
+  # transform stars into JSON
+  json_out = .measure_time(quote(lapply(stars_out,function(obj) as(obj,"HyperCube"))),"Translated from stars to list. Runtime:")
+  
+  # if length 1 return, if more join
+  if (length(json_out) == 1) {
+    json_out = json_out[[1]]
+  } else {
+    shell = json_out[[1]]
+    shell$hypercubes = lapply(unname(json_out),function(obj) obj$hypercubes[[1]])
+    json_out = shell
+    rm(shell)
+  }
+  
+  json = .measure_time(quote(jsonlite::toJSON(json_out,auto_unbox = TRUE)),"Prepared JSON from list. Runtime:")
   
   res$setHeader(name = "CONTENT-TYPE",value = "application/json")
   res$setHeader(name = "date", value = Sys.time())

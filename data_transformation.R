@@ -1,7 +1,6 @@
 # raster collection tile -> stars ----
 as.RasterCollectionTile.stars = function(from) {
   # raster_collection_tile order: [band][time][y][x]
-  
   arr = abind::abind(band=from$raster_collection_tiles$data,along=0)
   
   # rearrange dim order
@@ -36,35 +35,73 @@ setAs(from="RasterCollectionTile",to="stars",def=as.RasterCollectionTile.stars)
 
 # hypercube -> stars ----
 as.HyperCube.stars = function(from) {
-  dimensions = from$hypercubes[1,"dimensions"][[1]]
-  dim_sizes = sapply(dimensions$coordinates, length)
-  names(dim_sizes) = dimensions$name
   
-  
-  arr = array(from$hypercubes[1,"data"][[1]],dim_sizes) #assumption that only one cube is sent
-  stars = stars::st_as_stars(arr) 
-  
-  stars = stars::st_set_dimensions(stars, names=dimensions$name)
-  
-  for (i in 1:nrow(dimensions)) {
-    dimname = dimensions[i,"name"]
+  stars_objs = apply(from$hypercubes,MARGIN = 1,FUN = function(row) {
+    dimensions = row$dimensions #potentially multi row
+    dim_sizes = sapply(dimensions$coordinates, length)
+    names(dim_sizes) = dimensions$name
     
+    arr = array(row$data,dim_sizes) #assumption that only one cube is sent
+    stars = stars::st_as_stars(arr) 
     
-    stars = stars::st_set_dimensions(stars,
-                                     which=dimname,
-                                     values = dimensions[[i,"coordinates"]])
-  }
-  if (all(c("x","y") %in% names(st_dimensions(stars)))) {
-    stars = stars::st_set_dimensions(stars,xy = c("x","y"))
-    if (grepl(x = tolower(from$proj),pattern = "epsg:")) {
-      st_crs(stars) = st_crs(as.numeric(strsplit(tolower(from$proj),"epsg:")[[1]][2]))
+    stars = stars::st_set_dimensions(stars, names=dimensions$name)
+    
+    for (i in 1:nrow(dimensions)) {
+      dimname = dimensions[i,"name"]
+      
+      
+      stars = stars::st_set_dimensions(stars,
+                                       which=dimname,
+                                       values = dimensions[[i,"coordinates"]])
+    }
+    if (all(c("x","y") %in% names(st_dimensions(stars)))) { # we have spatial dimensions (have to be x and y for now)
+      stars = stars::st_set_dimensions(stars,xy = c("x","y"))
+      if (grepl(x = tolower(from$proj),pattern = "epsg:")) {
+        st_crs(stars) = st_crs(as.numeric(strsplit(tolower(from$proj),"epsg:")[[1]][2]))
+      } else {
+        st_crs(stars) = st_crs(from$proj)
+      }
+      
     } else {
-      st_crs(stars) = st_crs(from$proj)
+      stars = stars::st_set_dimensions(stars,xy = c(NA,NA))
     }
     
-  }
+    return(stars)
+  })
   
-  return(stars)
+  
+  # for (row_index in 1:nrow(from$hypercubes)) {
+  #   dimensions = from$hypercubes[row_index,"dimensions"][[1]] #potentially multi row
+  #   dim_sizes = sapply(dimensions$coordinates, length)
+  #   names(dim_sizes) = dimensions$name
+  #   
+  #   arr = array(from$hypercubes[row_index,"data"][[1]],dim_sizes) #assumption that only one cube is sent
+  #   stars = stars::st_as_stars(arr) 
+  #   
+  #   stars = stars::st_set_dimensions(stars, names=dimensions$name)
+  #   
+  #   for (i in 1:nrow(dimensions)) {
+  #     dimname = dimensions[i,"name"]
+  #     
+  #     
+  #     stars = stars::st_set_dimensions(stars,
+  #                                      which=dimname,
+  #                                      values = dimensions[[i,"coordinates"]])
+  #   }
+  #   if (all(c("x","y") %in% names(st_dimensions(stars)))) {
+  #     stars = stars::st_set_dimensions(stars,xy = c("x","y"))
+  #     if (grepl(x = tolower(from$proj),pattern = "epsg:")) {
+  #       st_crs(stars) = st_crs(as.numeric(strsplit(tolower(from$proj),"epsg:")[[1]][2]))
+  #     } else {
+  #       st_crs(stars) = st_crs(from$proj)
+  #     }
+  #     
+  #   }
+  # }
+  
+  
+  return(stars_objs)
+  
 }
 setAs(from="HyperCube",to="stars",def=as.HyperCube.stars)
 
@@ -141,9 +178,9 @@ setAs(to="RasterCollectionTile",from="stars",def=as.stars.RasterCollectionTiles)
 
 # stars -> hypercube ----
 as.stars.HyperCube = function(from) {
+  
   dimnames=names(st_dimensions(from))
   dimensions = lapply(dimnames, function (dim) {
-    
     list(name=dim,
          coordinates=st_get_dimension_values(from,which=dim))
     
