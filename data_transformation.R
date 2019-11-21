@@ -56,7 +56,12 @@ as.HyperCube.stars = function(from) {
   }
   if (all(c("x","y") %in% names(st_dimensions(stars)))) {
     stars = stars::st_set_dimensions(stars,xy = c("x","y"))
-    st_crs(stars) = st_crs(from$proj)
+    if (grepl(x = tolower(from$proj),pattern = "epsg:")) {
+      st_crs(stars) = st_crs(as.numeric(strsplit(tolower(from$proj),"epsg:")[[1]][2]))
+    } else {
+      st_crs(stars) = st_crs(from$proj)
+    }
+    
   }
   
   return(stars)
