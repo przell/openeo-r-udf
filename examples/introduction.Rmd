@@ -30,9 +30,20 @@ run_udf = function(data, code, host="http://localhost", port=NULL, debug = FALSE
     data = read_json(data, simplifyVector = TRUE)
   }
   
+  if (is.call(code)) {
+    code = paste(deparse(code),collapse = "\n")
+  } else if (is.character(code)) {
+    if (file.exists(code)) {
+      # if valid file path open file and attach
+      code = readChar(code, file.info(code)$size)
+    }    
+  }
+  
+  
+  
   payload = list(
     code = list(
-      source = paste(deparse(code),collapse = "\n"),
+      source = code,
       language = "R"),
     data = data
   )

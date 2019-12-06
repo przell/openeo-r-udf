@@ -1,6 +1,7 @@
 library(stars)
 library(abind)
 library(lubridate)
+library(xts)
 
 DEBUG = FALSE
 
@@ -20,6 +21,21 @@ source("data_transformation.R")
     cat("\n")
     print(Sys.time()-start)
   })
+}
+
+.read_data_requirement = function(code) {
+  require_annotation = "@require"
+  require_regex = paste0("[#]+\\s*",require_annotation,"\\s*(\\w+):(\\w+)\\s*\\n")
+  selection = unlist(regmatches(code,regexec(require_regex,code,perl=TRUE)))
+  
+  if (length(selection) > 0) {
+    return(list(
+      variable_name = selection[2],
+      target_class = selection[3]
+    ))
+  } else {
+    return(list())
+  }
 }
 
 #* Interprete JSON, divide code and data and assign classes
@@ -62,27 +78,48 @@ check_data = function(req, res) {
 #* Takes a UDFRequest containing data and code and runs the code on the data
 #* 
 #* @post /udf
-run_UDF.json = function(req,res) {
+post_udf.json = function(req,res) {
   
   # prepare the executable code
   fun = function() {}
   formals(fun) = alist(data=) #TODO also metadata from run_udf (processes api)
   
-  if (!startsWith(req$code$source,"{")) {
-    req$code$source = paste0("{",req$code$source)
-  }
-  
-  if (!endsWith(req$code$source,"}")) {
-    req$code$source = paste0(req$code$source,"}")
-  }
-  body(fun) = parse(text=req$code$source)
-  
+  tryCatch({
+    if (!startsWith(req$code$source,"{")) {
+      # if a starting bracket is missing set opening and closing ones, otherwise we assume that the
+      # provided code is clean
+      req$code$source = paste0("{",req$code$source,"}")
+    }
+    
+    
+    body(fun) = parse(text=req$code$source)
+  },
+  error = function(e) {
+    stop("Provided R code is not valid. Please check code syntax, parenthesis and spelling.")
+  })
   
   # transform data into stars
-  stars_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
+  data_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
+  
+  # if data requirements states something else than stars we need to convert it
+  data_requirement = .read_data_requirement(req$code$source)
+  if (length(data_requirement) > 0) {
+    if (length(data_requirement$variable_name) > 0) {
+      #replace variable name in fun
+      names(formals(fun)) = data_requirement$variable_name
+      # TODO when we use the context this needs to be accounted for!
+    }
+    if (length(data_requirement$target_class) > 0 && data_requirement$target_class == "xts") {
+      # coerce stars_in into the target class
+      data_in = lapply(data_in, as.xts)
+      
+    } else {
+      stop("Not supported variable class. Use 'stars' or 'xts'")
+    }
+  }
   
   # run the UDF
-  stars_out = .measure_time(quote(lapply(stars_in, fun)),"Executed script. Runtime:")
+  stars_out = .measure_time(quote(lapply(data_in, fun)),"Executed script. Runtime:")
   
   # transform stars into JSON
   json_out = .measure_time(quote(lapply(stars_out,function(obj) as(obj,"HyperCube"))),"Translated from stars to list. Runtime:")

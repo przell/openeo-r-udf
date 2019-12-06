@@ -49,10 +49,17 @@ as.HyperCube.stars = function(from) {
     for (i in 1:nrow(dimensions)) {
       dimname = dimensions[i,"name"]
       
+      if (dimname == "t" || dimname == "time"){
+        stars = stars::st_set_dimensions(stars,
+                                         which=dimname,
+                                         values = as_datetime(dimensions[[i,"coordinates"]]))
+      } else {
+        stars = stars::st_set_dimensions(stars,
+                                         which=dimname,
+                                         values = dimensions[[i,"coordinates"]])
+      }
       
-      stars = stars::st_set_dimensions(stars,
-                                       which=dimname,
-                                       values = dimensions[[i,"coordinates"]])
+      
     }
     if (all(c("x","y") %in% names(st_dimensions(stars)))) { # we have spatial dimensions (have to be x and y for now)
       stars = stars::st_set_dimensions(stars,xy = c("x","y"))
