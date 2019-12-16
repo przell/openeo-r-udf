@@ -114,12 +114,22 @@ post_udf.json = function(req,res) {
       data_in = lapply(data_in, as.xts)
       
     } else {
+      if (!(length(data_requirement$target_class) > 0 && data_requirement$target_class == "stars"))
       stop("Not supported variable class. Use 'stars' or 'xts'")
     }
   }
   
   # run the UDF
   stars_out = .measure_time(quote(lapply(data_in, fun)),"Executed script. Runtime:")
+  
+  # map to stars if other class
+  lapply(stars_out, function(return_obj) {
+    if (class(return_obj) != "stars") {
+      return(st_as_stars(return_obj))
+    } else {
+      return(return_obj)
+    }
+  })
   
   # transform stars into JSON
   json_out = .measure_time(quote(lapply(stars_out,function(obj) as(obj,"HyperCube"))),"Translated from stars to list. Runtime:")
