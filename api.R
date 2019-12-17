@@ -99,8 +99,7 @@ post_udf.json = function(req,res) {
   })
   
   # transform data into stars
-  data_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
-  
+  stars_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
   # if data requirements states something else than stars we need to convert it
   data_requirement = .read_data_requirement(req$code$source)
   if (length(data_requirement) > 0) {
@@ -111,26 +110,59 @@ post_udf.json = function(req,res) {
     }
     if (length(data_requirement$target_class) > 0 && data_requirement$target_class == "xts") {
       # coerce stars_in into the target class
-      data_in = lapply(data_in, as.xts)
+      data_in = lapply(stars_in, as.xts)
       
     } else {
-      if (!(length(data_requirement$target_class) > 0 && data_requirement$target_class == "stars"))
-      stop("Not supported variable class. Use 'stars' or 'xts'")
+      if (!(length(data_requirement$target_class) > 0 && data_requirement$target_class == "stars")) {
+        stop("Not supported variable class. Use 'stars' or 'xts'")
+      } else {
+        data_in = stars_in
+      }
     }
   }
-  
   # run the UDF
   stars_out = .measure_time(quote(lapply(data_in, fun)),"Executed script. Runtime:")
   
+  
   # map to stars if other class
-  lapply(stars_out, function(return_obj) {
-    if (class(return_obj) != "stars") {
-      return(st_as_stars(return_obj))
+  stars_out = lapply(1:length(stars_out), function(index) {
+    if (class(stars_out[[index]]) == "stars") {
+      return(stars_out[[index]])
+    } else if (class(data_in[[1]]) == "xts") {
+      
+      return(reduce_4d_time_xts(udf_result = stars_out[[index]],
+                                stars_in = stars_in[[index]],
+                                time = "t"
+                                ))
+      
+      # if (is.null(dim(return_obj))) {
+      #   attr_name = names(return_obj)
+      #   dim(return_obj) = 1
+      #   names(dim(return_obj)) = attr_name
+      # }
+      # if (!is.null(dim(return_obj))) {
+      #   return_obj = t(return_obj)
+      #   dim(return_obj) = c(dim(input)[-t], new = prod(dim(return_obj))/prod(dim(input)[-t]))
+      #   return(st_as_stars(list(x = return_obj))) # but this looses all the dimension metadata)
+      # } else { # f() returns a vector, not a matrix
+      #   if (length(dim(input)) > 1) {
+      #     dim(return_obj) = dim(input)[-t]
+      #     
+      #     return(st_as_stars(list(x = return_obj), dimensions = st_dimensions(input)[-t] ))
+      #   } else {
+      #     # in order to keep the dimensionality > 0 make a attribute dimension
+      #     dim(return_obj) = length(names(input))
+      #     return(st_set_dimensions(return_obj,
+      #                              which=1,
+      #                              values=names(stars_out[[index]])))
+      #   }
+      #   
+      #   
+      # } 
     } else {
-      return(return_obj)
+      stop("UDF data return is not xts or stars.")
     }
   })
-  
   # transform stars into JSON
   json_out = .measure_time(quote(lapply(stars_out,function(obj) as(obj,"HyperCube"))),"Translated from stars to list. Runtime:")
   
@@ -162,5 +194,58 @@ get_installed_libraries = function() {
   rownames(libs) = NULL
 
   return(libs)
+}
+
+reduce_4d_time_xts = function(udf_result, stars_in, time = "t", ...) {
+  t = which(names(dim(stars_in)) == time)
+  
+  
+  if (class(udf_result) %in% c("numeric","character","factor")) {
+    if (length(udf_result) == 0) stop("No values are returned in xts UDF.")
+    variable_names = names(udf_result)
+    has_variable_names = !is.null(variable_names)
+    
+    if (length(udf_result) >= 1) {
+      #univariat
+      dim(udf_result) = c(variable = length(udf_result)) # -> array
+    } 
+    
+    if (has_variable_names) {
+      # add names as dimension values
+      udf_result = st_as_stars(list(x = udf_result))
+      udf_result = st_set_dimensions(udf_result,which="variable",values=variable_names)
+      return(udf_result)
+    } else {
+      return(st_as_stars(list(x = udf_result)))
+    }
+    
+  }
+  if (is.xts(udf_result)) {
+    return(st_as_stars(udf_result))
+  }
+  
+  if (!is.null(dim(udf_result))) { # xts?
+    udf_result = t(udf_result)
+    
+    ncols = ncol(udf_result)
+    variable_names = colnames(udf_result)
+    has_variable_names = !is.null(variable_names)
+    
+    # "variable" will be the new dimension which is created for the multivariate analysis
+    dim(udf_result) = c(dim(stars_in)[-t], 
+                        variable = prod(dim(udf_result))/prod(dim(stars_in)[-t])) 
+    
+    dims = st_dimensions(stars_in)[-t]
+    if (has_variable_names) {
+      dims$variables = stars:::create_dimension(values = variable_names)
+    } else {
+      dims$variables = stars:::create_dimension(from = 1 , to = ncols)
+    }
+    
+    return(st_as_stars(list(x = udf_result), dimensions = dims))
+  } else { # f() returns a vector, not a matrix
+    dim(udf_result) = dim(stars_in)[-t] # with the new additions this should not occur
+    st_as_stars(list(x = udf_result), dimensions = st_dimensions(stars_in)[-t]) 
+  }
 }
 
