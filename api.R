@@ -88,16 +88,14 @@ post_udf.json = function(req,res) {
     if (!startsWith(req$code$source,"{")) {
       # if a starting bracket is missing set opening and closing ones, otherwise we assume that the
       # provided code is clean
-      req$code$source = paste0("{",req$code$source,"}")
+      req$code$source = paste0("{\n",req$code$source,"\n}")
     }
-    
     
     body(fun) = parse(text=req$code$source)
   },
   error = function(e) {
-    stop("Provided R code is not valid. Please check code syntax, parenthesis and spelling.")
+    stop(paste0("Provided R code is not valid. Please check code syntax, parenthesis and spelling. Message: ",e$message))
   })
-  
   # transform data into stars
   stars_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
   # if data requirements states something else than stars we need to convert it
@@ -110,7 +108,12 @@ post_udf.json = function(req,res) {
     }
     if (length(data_requirement$target_class) > 0 && data_requirement$target_class == "xts") {
       # coerce stars_in into the target class
-      data_in = lapply(stars_in, as.xts)
+      data_in = lapply(stars_in, function(stars) {
+        if (! "t" %in% names(st_dimensions(stars))) {
+          stop("No temporal dimension 't' found.")
+        }
+        as.xts(stars)
+      })
       
     } else {
       if (!(length(data_requirement$target_class) > 0 && data_requirement$target_class == "stars")) {
@@ -126,39 +129,14 @@ post_udf.json = function(req,res) {
   
   # map to stars if other class
   stars_out = lapply(1:length(stars_out), function(index) {
-    if (class(stars_out[[index]]) == "stars") {
+    if (any(class(stars_out[[index]]) %in% "stars")) {
       return(stars_out[[index]])
-    } else if (class(data_in[[1]]) == "xts") {
+    } else if (any(class(data_in[[1]]) %in% "xts")) {
       
-      return(reduce_4d_time_xts(udf_result = stars_out[[index]],
+      return(as.timeseries_result.stars(udf_result = stars_out[[index]],
                                 stars_in = stars_in[[index]],
                                 time = "t"
                                 ))
-      
-      # if (is.null(dim(return_obj))) {
-      #   attr_name = names(return_obj)
-      #   dim(return_obj) = 1
-      #   names(dim(return_obj)) = attr_name
-      # }
-      # if (!is.null(dim(return_obj))) {
-      #   return_obj = t(return_obj)
-      #   dim(return_obj) = c(dim(input)[-t], new = prod(dim(return_obj))/prod(dim(input)[-t]))
-      #   return(st_as_stars(list(x = return_obj))) # but this looses all the dimension metadata)
-      # } else { # f() returns a vector, not a matrix
-      #   if (length(dim(input)) > 1) {
-      #     dim(return_obj) = dim(input)[-t]
-      #     
-      #     return(st_as_stars(list(x = return_obj), dimensions = st_dimensions(input)[-t] ))
-      #   } else {
-      #     # in order to keep the dimensionality > 0 make a attribute dimension
-      #     dim(return_obj) = length(names(input))
-      #     return(st_set_dimensions(return_obj,
-      #                              which=1,
-      #                              values=names(stars_out[[index]])))
-      #   }
-      #   
-      #   
-      # } 
     } else {
       stop("UDF data return is not xts or stars.")
     }
@@ -196,11 +174,11 @@ get_installed_libraries = function() {
   return(libs)
 }
 
-reduce_4d_time_xts = function(udf_result, stars_in, time = "t", ...) {
+as.timeseries_result.stars = function(udf_result, stars_in, time = "t", ...) {
   t = which(names(dim(stars_in)) == time)
   
   
-  if (class(udf_result) %in% c("numeric","character","factor")) {
+  if (any(class(udf_result) %in% c("numeric","character","factor"))) {
     if (length(udf_result) == 0) stop("No values are returned in xts UDF.")
     variable_names = names(udf_result)
     has_variable_names = !is.null(variable_names)

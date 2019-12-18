@@ -6,6 +6,6 @@ ndvi_result = st_apply(x, FUN = function(X,...) {
 }, MARGIN = all_dim[-which(all_dim=="band")])
 
 all_dim = names(dim(ndvi_result))
-min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="time")])
+min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="t")])
 
 min_ndvi

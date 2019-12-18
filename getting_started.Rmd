@@ -1,0 +1,75 @@
+---
+title: "Untitled"
+author: "Florian Lahn"
+date: "18 12 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Getting started with R UDF
+
+Usually the R UDF is a component within an openEO back-end infrastructure, mainly due to securtiy concerns. It will be called within the `run_udf` process and users won't be exposed to the UDF API and the managed data exchange between the process chain of the back-end and the UDF service.
+
+However, it seems wise to offer a way to setup a local UDF server first in order to test the code or get familiar with the mechanisms. 
+
+## What is the R-UDF service
+
+As described in the [openEO UDF framework](https://open-eo.github.io/openeo-udf/) the service is designed to run user defined functions in Python and R on the data of a user defined process (former process graph). R and Python services are developed respectively. When we talk about **service**, means a stateless webservice - often HTTP webservice. The service receives the preprocessed data and the users script from the openEO back-end and executes the code on the data in a separated environment and returns the result.
+
+The exchange of data is defined in the [UDF API](https://open-eo.github.io/openeo-udf/api_docs/). In the current API (new API version available in late January 2020) we have defined an HTTP endpoint `POST /udf` to handle the UDF execution as well as endpoints related to setting up machine learning models across different UDF services. The R-UDF currently only supports the UDF execution and offers an additional endpoint to receive a list of installed R packages with their version.
+
+The Python UDF service also offers Python bindings, allowing Python back-ends to run Python code directly by transforming Python objects like `xarray`, `numpy` and other into the common data formats. This only works if your back-end is implemented in Python and if you call an internal process in order to share the in-memory objects. This is not supported in the R-UDF service, because no back-end is implemented in R to pass on memory objects. This is the reason why this service will be offered as externalized / stand-alone service, which requires a data serialization into a common data format for in- and output, which makes it potentially slower in execution than its Python in-process called counterpart.
+
+## Technology and workflow
+
+The HTTP requests are handled by [`plumber`](https://www.rplumber.io/) which is an HTTP webservice for R. The request is decomposed into data and code. The code will be wrapped into a function which signature will be customizable with the `@require` annotation which will be discussed later. The data is translated into a [`stars`](https://r-spatial.github.io/stars/) object by default. The user can also choose if the incoming object will be a `xts` or a `stars` object with the same `@require` annotation.
+Then the user code is invoked by calling the produced function and the results are transformed into a `stars` object and translated into the respective API data model (currently only HyperCubes are created and supported).
+
+![Simple UDF Workflow](img/udf_workflow_simple.png)
+
+## UDF scripting
+
+The data is injected into the code via the variable `data`. `data` contains either a `stars` or a `xts` object based on the presence of the require annotation. By default the variable is called `data` and is a `stars` object.
+
+For multidimensional data the dimensions are labeled with some fixed names. For the spatial it is **x** and **y**, for the temporal dimension **t** and for bands or layers it is **band**. This means that if you need to address a particular dimension you can reference them by name rather than relying on the dimension order. The real dimensionality may vary based on the prior used back-end functions.
+
+To develop your own script you might create some example data by creating a similarly shaped `stars` object or a `xts` object. How to create such example data please look into the respective R packages and their vignettes.
+
+```{r, eval=FALSE}
+# @require x:stars
+
+all_dim = names(dim(x))
+ndvi_result = st_apply(x, FUN = function(X,...) {
+  (X[8]-X[4])/(X[8]+X[4])
+}, MARGIN = all_dim[-which(all_dim=="band")])
+
+all_dim = names(dim(ndvi_result))
+min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="t")])
+
+min_ndvi
+```
+
+The example above calculate the minimum Normalized difference index (NDVI) on a Sentinel-2 dataset. With the comment at the beginning you can define the variable the code works on. In the example **@require** triggers the customization of the input data. The colon (**:**) defines the data assignment. Left of the colon is the data object name and on the right side there is the class name. Currently only `stars` and `xts` are allowed values for the classes.
+
+Everything afterwards are calls to manipulate the object. And at the end of the script the return value is specified.
+
+In the internal UDF execution of this service the code will be translated into the following function which is invoked:
+
+```{r, eval=FALSE}
+function(x) {
+  all_dim = names(dim(x))
+  ndvi_result = st_apply(x, FUN = function(X,...) {
+    (X[8]-X[4])/(X[8]+X[4])
+  }, MARGIN = all_dim[-which(all_dim=="band")])
+  
+  all_dim = names(dim(ndvi_result))
+  min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="t")])
+  
+  min_ndvi
+}
+```
+
+For the development: Create test data with the same shape of the intended data (where you want to invoke `run_udf`) and manipulate the data as intended. To port it into an UDF script, copy the manipulation steps into a separate file and specify the input data via the annotation.
