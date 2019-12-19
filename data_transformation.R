@@ -1,3 +1,7 @@
+setClass("RasterCollectionTile")
+setClass("HyperCube")
+setClass("StructuredData")
+
 # raster collection tile -> stars ----
 as.RasterCollectionTile.stars = function(from) {
   # raster_collection_tile order: [band][time][y][x]
@@ -75,37 +79,6 @@ as.HyperCube.stars = function(from) {
     
     return(stars)
   })
-  
-  
-  # for (row_index in 1:nrow(from$hypercubes)) {
-  #   dimensions = from$hypercubes[row_index,"dimensions"][[1]] #potentially multi row
-  #   dim_sizes = sapply(dimensions$coordinates, length)
-  #   names(dim_sizes) = dimensions$name
-  #   
-  #   arr = array(from$hypercubes[row_index,"data"][[1]],dim_sizes) #assumption that only one cube is sent
-  #   stars = stars::st_as_stars(arr) 
-  #   
-  #   stars = stars::st_set_dimensions(stars, names=dimensions$name)
-  #   
-  #   for (i in 1:nrow(dimensions)) {
-  #     dimname = dimensions[i,"name"]
-  #     
-  #     
-  #     stars = stars::st_set_dimensions(stars,
-  #                                      which=dimname,
-  #                                      values = dimensions[[i,"coordinates"]])
-  #   }
-  #   if (all(c("x","y") %in% names(st_dimensions(stars)))) {
-  #     stars = stars::st_set_dimensions(stars,xy = c("x","y"))
-  #     if (grepl(x = tolower(from$proj),pattern = "epsg:")) {
-  #       st_crs(stars) = st_crs(as.numeric(strsplit(tolower(from$proj),"epsg:")[[1]][2]))
-  #     } else {
-  #       st_crs(stars) = st_crs(from$proj)
-  #     }
-  #     
-  #   }
-  # }
-  
   
   return(stars_objs)
   
@@ -208,3 +181,81 @@ as.stars.HyperCube = function(from) {
   )) 
 }
 setAs(to="HyperCube",from="stars",def=as.stars.HyperCube)
+
+# simple data -> structured data ----
+as.StructuredData = function(from) {
+  
+  if (!any(class(from) %in% c("list","numeric","integer","character","factor","logical","matrix","data.frame")) || length(from) == 0) {
+    stop("Cannot create 'StructuredData' output for given object. Either the data is no simple type or it is NULL.")
+  }
+  
+  if (class(from) == "matrix") {
+    type = "table"
+  } else if (!is.null(names(from)) || !is.null(colnames(from))) {
+    type = "dict" 
+  } else {
+    type = "list"
+  }
+  
+  # modify data
+  switch(type,
+         table={
+           # decompose into header, row1, row2, ..., rowN
+           from = append(list(colnames(from)),unname(split(from,row(from))))
+         },
+         dict = {
+           if (!is.list(from)) {
+             from = as.list(from)
+           }
+         },
+         list = {
+           
+         })
+  
+  # 'proj' will be NULL, because we have no spatial dimension
+  return(list(id="udf_result",
+              proj = NULL,
+              structured_data = list(
+                list(
+                  id="value", #TODO name dynamically
+                  type=type,
+                  data=from
+                )
+              )
+  )) 
+}
+
+setAs(from = "list", to="StructuredData",def = as.StructuredData)
+setAs(from = "numeric", to="StructuredData",def = as.StructuredData)
+setAs(from = "character", to="StructuredData",def = as.StructuredData)
+setAs(from = "factor", to="StructuredData",def = as.StructuredData)
+setAs(from = "integer", to="StructuredData",def = as.StructuredData)
+setAs(from = "logical", to="StructuredData",def = as.StructuredData)
+setAs(from = "matrix", to="StructuredData",def = as.StructuredData)
+setAs(from = "data.frame", to="StructuredData",def = as.StructuredData)
+
+# structured data -> simple / basic data types ----
+as.StructuredData.base = function(from) {
+  
+  if (class(from$structured_data) == "data.frame") {
+    rowwise = unname(split(from$structured_data,row(from$structured_data)))
+    return(lapply(rowwise, function(sd){
+      switch(sd$type,
+             table={
+               data = sd$data[[1]]
+               colnames = data[1,]
+               data=data[-1,]
+               colnames(data) = colnames
+               return(data)
+             },
+             dict = {
+               return(sd$data)
+             },
+             list = {
+               return(unlist(sd$data))
+             })
+    }))
+  }
+  
+  
+}

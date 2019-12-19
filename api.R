@@ -3,6 +3,10 @@ library(abind)
 library(lubridate)
 library(xts)
 
+
+# API version: 0.1pre-alpha
+# R-UDF version: 0.2
+
 DEBUG = FALSE
 
 #TODO define float maximum digits
@@ -65,9 +69,11 @@ check_data = function(req, res) {
       class(req$data) = "RasterCollectionTile"
     } else if (length(req$data$hypercubes) > 0) {
       class(req$data) = "HyperCube"
+    } else if (length(req$data$structured_data) > 0) {
+      class(req$data) = "StructuredData"
     } else {
       res$status = 400
-      return(list(error = "Data other than RasterCollectionTile and Hypercube are not supported yet."))
+      return(list(error = "Data other than RasterCollectionTile, Hypercube and StructuredData are not supported yet."))
     }
   }
   plumber::forward()
@@ -78,82 +84,73 @@ check_data = function(req, res) {
 #* Takes a UDFRequest containing data and code and runs the code on the data
 #* 
 #* @post /udf
-post_udf.json = function(req,res) {
+post_udf.json = function(req,res, debug=FALSE) {
+  
+  if (!is.null(debug) && isTRUE(debug)) {
+    DEBUG = debug
+  }
   
   # prepare the executable code
-  fun = function() {}
-  formals(fun) = alist(data=) #TODO also metadata from run_udf (processes api)
+  fun = .prepare_udf_function(code = req$code$source)
   
-  tryCatch({
-    if (!startsWith(req$code$source,"{")) {
-      # if a starting bracket is missing set opening and closing ones, otherwise we assume that the
-      # provided code is clean
-      req$code$source = paste0("{\n",req$code$source,"\n}")
-    }
-    
-    body(fun) = parse(text=req$code$source)
-  },
-  error = function(e) {
-    stop(paste0("Provided R code is not valid. Please check code syntax, parenthesis and spelling. Message: ",e$message))
-  })
-  # transform data into stars
-  stars_in = .measure_time(quote(as(req$data,"stars")),"Translated list into stars. Runtime:")
   # if data requirements states something else than stars we need to convert it
   data_requirement = .read_data_requirement(req$code$source)
+  
   if (length(data_requirement) > 0) {
     if (length(data_requirement$variable_name) > 0) {
       #replace variable name in fun
       names(formals(fun)) = data_requirement$variable_name
       # TODO when we use the context this needs to be accounted for!
     }
-    if (length(data_requirement$target_class) > 0 && data_requirement$target_class == "xts") {
-      # coerce stars_in into the target class
-      data_in = lapply(stars_in, function(stars) {
-        if (! "t" %in% names(st_dimensions(stars))) {
-          stop("No temporal dimension 't' found.")
-        }
-        as.xts(stars)
-      })
-      
-    } else {
-      if (!(length(data_requirement$target_class) > 0 && data_requirement$target_class == "stars")) {
-        stop("Not supported variable class. Use 'stars' or 'xts'")
-      } else {
-        data_in = stars_in
-      }
-    }
   }
+  
+  # transform data into stars or simple data
+  data_in = .translate_input_data(data = req$data, data_requirement)
+
+  
   # run the UDF
-  stars_out = .measure_time(quote(lapply(data_in, fun)),"Executed script. Runtime:")
+  results = .measure_time(quote(lapply(data_in, fun)),"Executed script. Runtime:")
   
   
-  # map to stars if other class
-  stars_out = lapply(1:length(stars_out), function(index) {
-    if (any(class(stars_out[[index]]) %in% "stars")) {
-      return(stars_out[[index]])
-    } else if (any(class(data_in[[1]]) %in% "xts")) {
+  # map to stars or keep simple data types
+  results = lapply(1:length(results), function(index) {
+    if (any(class(results[[index]]) %in% "stars")) {
+      return(results[[index]])
+    } else if (any(class(results[[index]]) %in% "xts")) { # TODO check later only xts to go in here (actual xts of results)
       
-      return(as.timeseries_result.stars(udf_result = stars_out[[index]],
-                                stars_in = stars_in[[index]],
+      return(as.timeseries_result.stars(udf_result = results[[index]],
+                                stars_in = data_in[[index]],
                                 time = "t"
                                 ))
+    } else if (any(class(results[[index]]) %in% 
+                   c("list","numeric","integer","character","factor","logical","matrix","data.frame"))) {
+      return(results[[index]])
     } else {
-      stop("UDF data return is not xts or stars.")
+      stop("UDF data return is not a simple type, xts or stars.")
     }
   })
-  # transform stars into JSON
-  json_out = .measure_time(quote(lapply(stars_out,function(obj) as(obj,"HyperCube"))),"Translated from stars to list. Runtime:")
   
-  # if length 1 return, if more join
+  # transform stars into HyperCube, simple data types into StructuredData
+  if (class(results[[1]])=="stars") {
+    json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"HyperCube"))),"Translated from stars to Hypercube Runtime:")
+  } else {
+    json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"StructuredData"))),"Translated from simple data to StructuredData. Runtime:")
+  }
+  
+  rm(results)
+  
+  # Merge multiple data chunks
   if (length(json_out) == 1) {
     json_out = json_out[[1]]
   } else {
     shell = json_out[[1]]
     shell$hypercubes = lapply(unname(json_out),function(obj) obj$hypercubes[[1]])
+    shell$structured_data = lapply(unname(json_out),function(obj) obj$structured_data[[1]])
     json_out = shell
     rm(shell)
   }
   
+  # Create the JSON structure
   json = .measure_time(quote(jsonlite::toJSON(json_out,auto_unbox = TRUE)),"Prepared JSON from list. Runtime:")
   
   res$setHeader(name = "CONTENT-TYPE",value = "application/json")
@@ -227,3 +224,50 @@ as.timeseries_result.stars = function(udf_result, stars_in, time = "t", ...) {
   }
 }
 
+.prepare_udf_function = function(code) {
+  fun = function() {}
+  formals(fun) = alist(data=) #TODO also metadata from run_udf (processes api)
+  
+  tryCatch({
+    if (!startsWith(code,"{")) {
+      # if a starting bracket is missing set opening and closing ones, otherwise we assume that the
+      # provided code is clean
+      code = paste0("{\n",code,"\n}")
+    }
+    
+    body(fun) = parse(text=code)
+  },
+  error = function(e) {
+    stop(paste0("Provided R code is not valid. Please check code syntax, parenthesis and spelling. Message: ",e$message))
+  })
+  
+  return(fun)
+}
+
+
+.translate_input_data = function(data,data_requirement=NULL) {
+  if ("HyperCube" %in% class(data)) {
+    data_in = .measure_time(quote(as(data,"stars")),"Translated list into stars. Runtime:")
+  } else if ("StructuredData" %in% class(data)) {
+    data_in = .measure_time(quote(as.StructuredData.base(data)),"Translated into simple data. Runtime:")
+  }
+  
+  if (length(data_requirement) > 0) {
+    if (length(data_requirement$target_class) > 0 && data_requirement$target_class == "xts") {
+      # coerce stars_in into the target class
+      data_in = lapply(data_in, function(stars) {
+        if (! "t" %in% names(st_dimensions(stars))) {
+          stop("No temporal dimension 't' found.")
+        }
+        as.xts(stars)
+      })
+      
+    } else {
+      if (!(length(data_requirement$target_class) > 0 && data_requirement$target_class == "stars")) {
+        stop("Not supported variable class. Use 'stars' or 'xts'")
+      }
+    }
+  }
+  
+  return(data_in)
+}
