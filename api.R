@@ -117,11 +117,7 @@ post_udf.json = function(req,res, debug=FALSE) {
     if (any(class(results[[index]]) %in% "stars")) {
       return(results[[index]])
     } else if (any(class(results[[index]]) %in% "xts")) { # TODO check later only xts to go in here (actual xts of results)
-      
-      return(as.timeseries_result.stars(udf_result = results[[index]],
-                                stars_in = data_in[[index]],
-                                time = "t"
-                                ))
+      return(st_as_stars(results[[index]]))
     } else if (any(class(results[[index]]) %in% 
                    c("list","numeric","integer","character","factor","logical","matrix","data.frame"))) {
       return(results[[index]])
@@ -169,59 +165,6 @@ get_installed_libraries = function() {
   rownames(libs) = NULL
 
   return(libs)
-}
-
-as.timeseries_result.stars = function(udf_result, stars_in, time = "t", ...) {
-  t = which(names(dim(stars_in)) == time)
-  
-  
-  if (any(class(udf_result) %in% c("numeric","character","factor"))) {
-    if (length(udf_result) == 0) stop("No values are returned in xts UDF.")
-    variable_names = names(udf_result)
-    has_variable_names = !is.null(variable_names)
-    
-    if (length(udf_result) >= 1) {
-      #univariat
-      dim(udf_result) = c(variable = length(udf_result)) # -> array
-    } 
-    
-    if (has_variable_names) {
-      # add names as dimension values
-      udf_result = st_as_stars(list(x = udf_result))
-      udf_result = st_set_dimensions(udf_result,which="variable",values=variable_names)
-      return(udf_result)
-    } else {
-      return(st_as_stars(list(x = udf_result)))
-    }
-    
-  }
-  if (is.xts(udf_result)) {
-    return(st_as_stars(udf_result))
-  }
-  
-  if (!is.null(dim(udf_result))) { # xts?
-    udf_result = t(udf_result)
-    
-    ncols = ncol(udf_result)
-    variable_names = colnames(udf_result)
-    has_variable_names = !is.null(variable_names)
-    
-    # "variable" will be the new dimension which is created for the multivariate analysis
-    dim(udf_result) = c(dim(stars_in)[-t], 
-                        variable = prod(dim(udf_result))/prod(dim(stars_in)[-t])) 
-    
-    dims = st_dimensions(stars_in)[-t]
-    if (has_variable_names) {
-      dims$variables = stars:::create_dimension(values = variable_names)
-    } else {
-      dims$variables = stars:::create_dimension(from = 1 , to = ncols)
-    }
-    
-    return(st_as_stars(list(x = udf_result), dimensions = dims))
-  } else { # f() returns a vector, not a matrix
-    dim(udf_result) = dim(stars_in)[-t] # with the new additions this should not occur
-    st_as_stars(list(x = udf_result), dimensions = st_dimensions(stars_in)[-t]) 
-  }
 }
 
 .prepare_udf_function = function(code) {

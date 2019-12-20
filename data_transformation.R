@@ -208,7 +208,14 @@ as.StructuredData = function(from) {
          },
          dict = {
            if (!is.list(from)) {
+             names = names(from)
+             if (is.null(names)) {
+               names = colnames(from)
+             }
+             
              from = as.list(from)
+             names(from) = names
+             
            }
          },
          list = {
@@ -249,9 +256,7 @@ as.StructuredData.base = function(from) {
                colnames = data[1,]
                data=data[-1,]
                colnames(data) = colnames
-               # check if all data in one row is the same type
-               # y: use matrix
-               # n: use data.frame
+  
                row_types = sapply(data[1,],function(obj) {
                  class(type.convert(obj,stringsAsFactors=FALSE))
                })
