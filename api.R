@@ -127,7 +127,7 @@ post_udf.json = function(req,res, debug=FALSE) {
   })
   
   # transform stars into HyperCube, simple data types into StructuredData
-  if (class(results[[1]])=="stars") {
+  if (any("stars" %in% class(results[[1]]))) {
     json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"HyperCube"))),"Translated from stars to Hypercube Runtime:")
   } else {
     json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"StructuredData"))),"Translated from simple data to StructuredData. Runtime:")
@@ -196,19 +196,54 @@ get_installed_libraries = function() {
   }
   
   if (length(data_requirement) > 0) {
-    if (length(data_requirement$target_class) > 0 && data_requirement$target_class == "xts") {
-      # coerce stars_in into the target class
-      data_in = lapply(data_in, function(stars) {
-        if (! "t" %in% names(st_dimensions(stars))) {
-          stop("No temporal dimension 't' found.")
-        }
-        as.xts(stars)
-      })
-      
-    } else {
-      if (!(length(data_requirement$target_class) > 0 && data_requirement$target_class == "stars")) {
-        stop("Not supported variable class. Use 'stars' or 'xts'")
-      }
+    if (length(data_requirement$target_class) > 0) {
+      switch(data_requirement$target_class,
+             xts = {
+               # coerce stars_in into the target class
+               data_in = lapply(data_in, function(stars) {
+                 if (! "stars" %in% class(stars)) stop("")
+                 
+                 if (! "t" %in% names(st_dimensions(stars))) {
+                   stop("No temporal dimension 't' found.")
+                 }
+                 as.xts(stars)
+               })
+             },
+             list = {
+               data_in = lapply(data_in,as.list)
+             },
+             data.frame = {
+               data_in = lapply(data_in,as.data.frame)
+             },
+             matrix = {
+               data_in = lapply(data_in,as.matrix)
+             },
+             tibble = {
+               data_in = lapply(data_in,tibble::as_tibble)
+             },
+             numeric = {
+               data_in = lapply(data_in,as.numeric)
+             },
+             character = {
+               data_in = lapply(data_in,as.character)
+             },
+             integer = {
+               data_in = lapply(data_in,as.integer)
+             },
+             logical = {
+               data_in = lapply(data_in,as.logical)
+             },
+             factor = {
+               data_in = lapply(data_in,as.factor)
+             },
+             {
+               # default behavior
+               if (!(length(data_requirement$target_class) > 0 && 
+                     data_requirement$target_class == "stars")) {
+                 stop("Not supported variable class. Use 'stars' or 'xts'")
+               }
+             }
+         )
     }
   }
   
