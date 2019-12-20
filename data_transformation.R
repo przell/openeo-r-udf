@@ -189,7 +189,7 @@ as.StructuredData = function(from) {
     stop("Cannot create 'StructuredData' output for given object. Either the data is no simple type or it is NULL.")
   }
   
-  if (class(from) == "matrix") {
+  if (class(from) %in% c("matrix","data.frame") && nrow(from) > 1) {
     type = "table"
   } else if (!is.null(names(from)) || !is.null(colnames(from))) {
     type = "dict" 
@@ -201,7 +201,10 @@ as.StructuredData = function(from) {
   switch(type,
          table={
            # decompose into header, row1, row2, ..., rowN
-           from = append(list(colnames(from)),unname(split(from,row(from))))
+           data = unname(split(from,row(from)))
+           data = lapply(data,unname)
+           from = append(list(colnames(from)),data)
+           rm(data)
          },
          dict = {
            if (!is.list(from)) {
@@ -246,7 +249,18 @@ as.StructuredData.base = function(from) {
                colnames = data[1,]
                data=data[-1,]
                colnames(data) = colnames
-               return(data)
+               # check if all data in one row is the same type
+               # y: use matrix
+               # n: use data.frame
+               row_types = sapply(data[1,],function(obj) {
+                 class(type.convert(obj,stringsAsFactors=FALSE))
+               })
+               
+               if (!all(row_types == row_types[[1]])) {
+                 data = as.data.frame(data)
+               }
+               
+               return(type.convert(data))
              },
              dict = {
                return(sd$data)
