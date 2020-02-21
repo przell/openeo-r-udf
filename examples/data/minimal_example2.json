@@ -1,0 +1,3 @@
+{"proj":"EPSG:32632","id":"hypercube_example","hypercubes":[{"data":[[[[136,298,649,273,4436,1738]],[[136,6254,5281,4826,5917,459]]],[[[159,1023,1196,893,4145,767]],[[159,235,529,228,3891,3121]]]],"id":"hyper_cube","dimensions":[{"name":"E","coordinates":[678390,678400]},{"name":"N","coordinates":[5152370,5152380]},{"name":"DATE","coordinates":["\"2016-08-01T00:00:00.000Z\""]},{"name":"band","coordinates":["AOT","B02","B03","B04","B08","WVP"]}]}]}
+
+

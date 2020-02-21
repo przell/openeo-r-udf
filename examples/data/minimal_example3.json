@@ -1,0 +1,51 @@
+{
+  "id": "test_data",
+  "data": [
+    [
+      [
+        0,
+        0.1
+      ],
+      [
+        0.2,
+        0.3
+      ]
+    ],
+    [
+      [
+        0,
+        0.1
+      ],
+      [
+        0.2,
+        0.3
+      ]
+    ]
+  ],
+  "dimension": [
+    {
+      "name": "time",
+      "unit": "ISO:8601",
+      "coordinates": [
+        "2001-01-01",
+        "2001-01-02"
+      ]
+    },
+    {
+      "name": "X",
+      "unit": "degree",
+      "coordinates": [
+        50,
+        60
+      ]
+    },
+    {
+      "name": "Y",
+      "unit": "degree",
+      "coordinates": [
+        40,
+        50
+      ]
+    }
+  ]
+}
