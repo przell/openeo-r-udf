@@ -4,7 +4,8 @@ ENV PLUMBER_PORT=5555
 
 # install other required packages, like stars and lubridate
 RUN apt-get update && apt-get install libudunits2-dev libgdal-dev -y && \
-  R -e "install.packages(c('plumber','remotes','sf','lubridate','stars','zoo','xts'),repos='https://cran.rstudio.com/')" && \
+  R -e "install.packages(c('plumber','remotes','sf','lubridate','zoo','xts'),repos='https://cran.rstudio.com/')" && \
+  R -e "remotes::install_github('r-spatial/stars')" && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/openeo-r-udf
