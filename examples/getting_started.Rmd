@@ -90,7 +90,7 @@ ndvi_result = st_apply(x, FUN = function(X,...) {
 }, MARGIN = all_dim[-which(all_dim=="band")])
 
 all_dim = names(dim(ndvi_result))
-min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="time")])
+min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="t")])
 
 min_ndvi
 ```
@@ -109,7 +109,7 @@ function(x) {
   }, MARGIN = all_dim[-which(all_dim=="band")])
   
   all_dim = names(dim(ndvi_result))
-  min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="time")])
+  min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="t")])
   
   min_ndvi
 }
@@ -143,7 +143,7 @@ script = quote({
   }, MARGIN = all_dim[-which(all_dim=="band")])
   
   all_dim = names(dim(ndvi_result))
-  min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="time")])
+  min_ndvi = st_apply(ndvi_result,FUN = min, MARGIN = all_dim[-which(all_dim=="t")])
 
   min_ndvi
 })
@@ -152,9 +152,10 @@ script = quote({
 The script is merely an example and can be optimized. It calculates the minimum NDVI over the given data set.
 
 ```{r,  eval=FALSE}
+library(openeo)
 port = 5555 
 host = "http://localhost"
-result_with_cube = jsonlite::fromJSON(send_udf(data = "/examples/data/hypercube.json",code = script,host=host,port=port),simplifyVector = TRUE)
+result_with_cube = jsonlite::fromJSON(send_udf(data = "examples/data/hypercube.json",code = script,host=host,port=port),simplifyVector = TRUE)
 ```
 
 The result of the run_udf is a JSON string that can be translated into an R object. The type of the object is a `HyperCube`.

@@ -59,6 +59,13 @@ as.HyperCube.stars = function(from) {
                                          which=dimname,
                                          values = as_datetime(dimensions[[i,"coordinates"]]))
       } else {
+        # shift the values by half the resolution, when we differ the extent and cell values from coordinate labels
+        if (any(dimname == c("x","y"))) {
+          resolution = mean(diff(dimensions[[i,"coordinates"]]),na.rm = TRUE)
+          dimensions[[i,"coordinates"]] = dimensions[[i,"coordinates"]] - (resolution/2)
+          
+        }
+        
         stars = stars::st_set_dimensions(stars,
                                          which=dimname,
                                          values = dimensions[[i,"coordinates"]])
@@ -66,6 +73,9 @@ as.HyperCube.stars = function(from) {
 
 
     }
+    
+    
+    
     if (all(c("x","y") %in% names(st_dimensions(stars)))) { # we have spatial dimensions (have to be x and y for now)
       stars = stars::st_set_dimensions(stars,xy = c("x","y"))
       if (grepl(x = tolower(from$proj),pattern = "epsg:")) {
@@ -159,7 +169,6 @@ setAs(to="RasterCollectionTile",from="stars",def=as.stars.RasterCollectionTiles)
 
 # stars -> hypercube ----
 as.stars.HyperCube = function(from) {
-
   dimnames=names(st_dimensions(from))
   dimensions = lapply(dimnames, function (dim) {
     list(name=dim,
