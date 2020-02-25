@@ -28,7 +28,7 @@ In the openEO API, the different clients interact with the different backends th
 
 ### Dependencies
 To run the API you need to have the following packages installed:
- * stars (>= 0.4-0)
+ * stars (>= 0.4-1)
  * jsonlite
  * plumber
  * lubridate
@@ -39,7 +39,8 @@ Depending on what analysis a potential UDF user can run this list needs to be ex
 These can be installed by running the following:
 
 ```r
-install.packages(c("stars", "plumber", "lubridate","sf"), dependencies = TRUE)
+install.packages(c("plumber", "lubridate","sf"), dependencies = TRUE)
+remotes::install.github("r-spatial/github")
 ```
 
 Additionally on Linux systems you need to install the following libraries to allow the "stars" package to function properly:
