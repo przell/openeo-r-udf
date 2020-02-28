@@ -194,14 +194,14 @@ as.HyperCube.stars = function(from) {
 setAs(to="HyperCube",from="stars",def=as.HyperCube.stars)
 
 # stars -> data_cube ----
-as.data_cube.stars = function(x) {
+as.data_cube.stars = function(from) {
   dc = list()
   dc$name = "data_cube"
   dc$description = "structural description of the dimensionality of the result"
-  dc$dim = dimnames(x)
-  dc$size = unname(dim(x))
+  dc$dim = dimnames(from)
+  dc$size = unname(dim(from))
   
-  dims = st_dimensions(x)
+  dims = st_dimensions(from)
   dim_models = lapply(names(dims), function(key) {
     d = dims[[key]]
     
@@ -274,10 +274,10 @@ as.data_cube.stars = function(x) {
   # TODO switch out this object with an index when we create the data collection object
   dc$variable_collection = list(
     name="cube_data",
-    size = unname(dim(x)),
-    number_of_variables = length(names(x)),
-    variables = lapply(names(x), function(variable_name) {
-      data = x[[variable_name]]
+    size = unname(dim(from)),
+    number_of_variables = length(names(from)),
+    variables = lapply(names(from), function(variable_name) {
+      data = from[[variable_name]]
       variable = list(
         name = variable_name,
         values = as.vector(data)
