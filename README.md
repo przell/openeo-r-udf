@@ -9,10 +9,10 @@ This repository is meant to be part of the H2020 funded project [openEO](http://
 ### User-Defined Functions
 The UDFs are implemented by developing an UDF API which work hand-in-hand with the openEO core API. The main idea is that there are UDF (web-) services which could be used by the backends as required. The typical workflow is:
 
-1. The user uploads his/her script from the client nodes to the backends along with the process graph
-2. The backend executes the process graph and encounters the UDF in the process graph
-3. The backend seeks the services of the UDF service to execute the user's script and sends the script and intermediate data to the service through appropriate means
-4. The UDF service executes the script on the data and sends the result back to the backend.
+1. Users upload their script from an openEO client into their workspace of a selected back-end.
+2. Users execute their process graphs on the back-end that contains a UDF.
+3. When executing the `run_udf` process the backend sends the user's script and the intermediate data to the UDF service that the user requires and is registered at the back-end.
+4. The UDF service runs the script on the data and sends the result back to the backend.
 5. The backend receives the data and continues executing the process graph until the final result is obtained.
 6. The backend sends the completed result to the user's client node.
 
@@ -20,7 +20,7 @@ These UDF service is being developed for two different languages - Python and R.
 
 ### Architecture
 
-![openEO UDF Architecture](https://github.com/Open-EO/openeo-r-udf/blob/master/data/openeo_github.png)
+![openEO UDF Architecture](/img/udf_architecture.png)
 
 In the openEO API, the different clients interact with the different backends through the openEO API which acts as a common language understood by both the clients and the backends. The UDF service is not accessible to the clients directly but only through the backends and hence the UDF service's internal operations are abstracted to the user.
 
@@ -28,7 +28,7 @@ In the openEO API, the different clients interact with the different backends th
 
 ### Dependencies
 To run the API you need to have the following packages installed:
- * stars (>= 0.4-0)
+ * stars (>= 0.4-1)
  * jsonlite
  * plumber
  * lubridate
@@ -39,7 +39,8 @@ Depending on what analysis a potential UDF user can run this list needs to be ex
 These can be installed by running the following:
 
 ```r
-install.packages(c("stars", "plumber", "lubridate","sf"), dependencies = TRUE)
+install.packages(c("plumber", "lubridate","sf"), dependencies = TRUE)
+remotes::install.github("r-spatial/stars")
 ```
 
 Additionally on Linux systems you need to install the following libraries to allow the "stars" package to function properly:
@@ -48,7 +49,7 @@ sudo apt-get install libudunits2-dev libgdal-dev -y
 ```
 
 ### Running the API locally
-Clone this repository and use RStudio (>= 1.2) to "plumb" `api.R`. Since version 1.2 RStudio allows to run plumbers "plumb" natively. But you can run the plumb also manually by executing the code in `server_start.R`. It will require the file `api.R` and `data_transformation.R`.
+Clone this repository and use RStudio (>= 1.2) to *plumb* `api.R`. Since version 1.2 RStudio allows to run plumbers *plumb* natively. But you can run the plumb also manually by executing the code in `server_start.R`. It will require the file `api.R` and `data_transformation.R`.
 
 ### Using Docker
 Docker provides a virtual containerized environment for running software. In order to install this R package in a Docker environment, please follow these steps:
@@ -60,6 +61,11 @@ docker info
 ```
 3. Run the provided `docker-compose.yml`. In the shell / console change directory to this cloned GitHub repository. Run `docker-compose up -d`.
 
+### Custom Docker Images
+
+If you find yourself lacking some packages then you might want to have a look at the docker files and configurations in the `/customizer` folder of this repository. By adding more required libraries in the `libraries.json` with their respective version or *latest* version you can install those libraries into the image.
+
+If the R package requires system libraries you have to install them via the *Dockerfile*. There is a comment block telling you want to uncomment and configure.
 
 ## Usage
-For first code examples, please have a look at `/examples/introduction.Rmd`. In combination with the two test data sets `/examples/hypercube.json` and `/examples/raster_collection_tile.json` you can start experimenting with OpenEO UDFs. In the markdown file there is a `run_udf` function defined that combines the code, the serialized data and sends it to the service for processing. The request is build according to the [API description](https://open-eo.github.io/openeo-udf/api_docs/). Currently the services offers the functionality for `POST /udf` with `HyperCubes` and `RasterCollectionTiles` as supported input data. The results are provided as a `Hypercube`.
+For first code examples, please have a look at `/examples/getting_started.Rmd` or [its HTML version](/examples/getting_started.html). With the test data sets `/examples/data/hypercube.json`, `/examples/data/raster_collection_tile.json` and other examples with simple structured data you can start experimenting with OpenEO UDFs. In the markdown file there is a reference to the `send_udf` function of the [`openeo` package](https://github.com/Open-EO/openeo-r-client) that combines the code and the serialized data and sends it to the service for processing. The request is build according to the [API description](https://open-eo.github.io/openeo-udf/api_docs/). Currently the services offers the functionality for `POST /udf` with `HyperCubes`, `RasterCollectionTiles` and `StructuredData` as supported input data. The results are provided as a `Hypercube` or if the results are simple, then `StructuredData` is returned.
