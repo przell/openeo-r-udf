@@ -57,7 +57,7 @@ check_data = function(req, res) {
 
     req$postBody = NULL
     if (is.null(json_in$code$language) || !tolower(json_in$code$language)=="r") {
-      res$status = 400 #maybe 422
+      res$status = 422
       return(list(error = "Cannot interprete code source, due to missing programming language."))
     }
 
@@ -68,14 +68,25 @@ check_data = function(req, res) {
       class(req$data) = "RasterCollectionTile"
     } else if (length(req$data$hypercubes) > 0) {
       class(req$data) = "HyperCube"
-    } else if (length(req$data$structured_data) > 0) {
+    } else if (length(req$data$structured_data) > 0 || length(req$data$structured_data_list) > 0) {
       class(req$data) = "StructuredData"
+    } else if (length(req$data$data_collection$object_collections$data_cubes) > 0) {
+      class(req$data) = "DataCube"
     } else {
-      res$status = 400
+      res$status = 422
       return(list(error = "Data other than RasterCollectionTile, Hypercube and StructuredData are not supported yet."))
     }
   }
   plumber::forward()
+}
+
+#* @apiTitle R UDF API
+#*
+#* Takes a UDFRequest containing data and code and runs the code on the data
+#*
+#* @post /udf_legacy
+post_udf_legacy.json = function(req,res, debug=FALSE) {
+  
 }
 
 #* @apiTitle R UDF API
@@ -131,30 +142,51 @@ post_udf.json = function(req,res, debug=FALSE) {
       stop("All data outputs have to be of class 'stars' or any structured data. Mixed types not supported, yet.")
     }
     # json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"HyperCube"))),"Translated from stars to Hypercube Runtime:")
-    json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"DataCollection"))),"Translated from stars to DataCollection. Runtime:")
+    data_cubes = .measure_time(quote(lapply(results,function(obj) as(obj,"DataCube"))),"Translated from stars to DataCollection. Runtime:")
+    
+    # extract variables
+    variables = list()
+    for(i in 1:length(data_cubes)) {
+      variables[[i]] = data_cubes[[i]]$variable_collection
+      data_cubes[[i]]$variable_collection = i-1
+    }
+    
+    json_out = list(
+      server_context=NA,
+      user_context=NA,
+      data_collection = list(
+        object_collection = list(
+          data_cubes = data_cubes
+        ),
+        variable_collections = variables,
+        metadata = list(
+          name="R-UDF result",
+          description="return value of an R UDF service",
+          number_of_object_collections = length(data_cubes),
+          number_of_geometries = 0,
+          number_of_variable_collections = length(variables),
+          number_of_time_stamps = 0,
+          creator="R-UDF service",
+          creation_time=format(lubridate::now(),format="%Y%m%dT%H%M%SZ"),
+          link = NA,
+          userdata=NA
+        )
+      )
+    )
   } else {
     json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"StructuredData"))),"Translated from simple data to StructuredData. Runtime:")
+    
+    json_out = list(
+      user_context=NA,
+      server_context=NA,
+      structured_data_list = json_out
+    )
   }
 
   rm(results)
 
-  # Merge multiple data chunks
-  if (length(json_out) == 1) {
-    json_out = json_out[[1]]
-  } else {
-    data_model = list(user_context=NA,
-                      server_context=NA,
-                      structured_data_list=NA, # array / list (multiple elements)
-                      data_collection=NA) 
-    shell = json_out[[1]]
-    shell$hypercubes = lapply(unname(json_out),function(obj) obj$hypercubes[[1]])
-    shell$structured_data = lapply(unname(json_out),function(obj) obj$structured_data[[1]])
-    json_out = shell
-    rm(shell)
-  }
-
   # Create the JSON structure
-  json = .measure_time(quote(jsonlite::toJSON(json_out,auto_unbox = TRUE)),"Prepared JSON from list. Runtime:")
+  json = .measure_time(quote(jsonlite::toJSON(json_out,auto_unbox = TRUE,force=TRUE)),"Prepared JSON from list. Runtime:")
 
   res$setHeader(name = "CONTENT-TYPE",value = "application/json")
   res$setHeader(name = "date", value = Sys.time())

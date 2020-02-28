@@ -333,16 +333,11 @@ as.StructuredData = function(from) {
          })
 
   # 'proj' will be NULL, because we have no spatial dimension
-  return(list(id="udf_result",
-              proj = NULL,
-              structured_data = list(
-                list(
-                  id="value", #TODO name dynamically
-                  type=type,
-                  data=from
-                )
-              )
-  ))
+  return(list(
+            description="structured data", #TODO name dynamically
+            type=type,
+            data=from
+          ))
 }
 
 setAs(from = "list", to="StructuredData",def = as.StructuredData)
@@ -356,8 +351,8 @@ setAs(from = "data.frame", to="StructuredData",def = as.StructuredData)
 
 # structured data -> simple / basic data types ----
 as.StructuredData.base = function(from) {
-
-  if (class(from$structured_data) == "data.frame") {
+  # from$structured_data_list should be an array / list?
+  if (class(from$structured_data_list) == "data.frame") {
     rowwise = unname(split(from$structured_data,row(from$structured_data)))
     return(lapply(rowwise, function(sd){
       switch(sd$type,
