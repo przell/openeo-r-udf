@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- readded the `/examples/data` folder after it was temporarily removed
 - added a `getting_started` markdown describing the design choices and the UDF scripting
 - added support for UDF data translation from stars to xts and back
 - annotation to require a certain called variable with a specific type
@@ -11,8 +12,12 @@
 
 ### Changed
 - folder structure in /examples
+- moved `send_udf` function into the `openeo` R package
 - endpoint `/libs` renamed into `/packages`
 - dimension name from "t" into "time" in /examples/data/hypercube.json
+
+### Fixed
+- coordinate shift for spatial coordinates
 
 ### Removed
 - introduction.Rmd, which was integrated into the getting_started.Rmd

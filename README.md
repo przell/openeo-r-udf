@@ -40,7 +40,7 @@ These can be installed by running the following:
 
 ```r
 install.packages(c("plumber", "lubridate","sf"), dependencies = TRUE)
-remotes::install.github("r-spatial/github")
+remotes::install.github("r-spatial/stars")
 ```
 
 Additionally on Linux systems you need to install the following libraries to allow the "stars" package to function properly:
