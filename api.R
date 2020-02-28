@@ -126,8 +126,12 @@ post_udf.json = function(req,res, debug=FALSE) {
   })
 
   # transform stars into HyperCube, simple data types into StructuredData
-  if (any("stars" %in% class(results[[1]]))) {
-    json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"HyperCube"))),"Translated from stars to Hypercube Runtime:")
+  if ("stars" %in% class(results[[1]])) { # only if all results are stars objects
+    if (! all(sapply(results,function(res)"stars"==class(res)))) {
+      stop("All data outputs have to be of class 'stars' or any structured data. Mixed types not supported, yet.")
+    }
+    # json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"HyperCube"))),"Translated from stars to Hypercube Runtime:")
+    json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"DataCollection"))),"Translated from stars to DataCollection. Runtime:")
   } else {
     json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"StructuredData"))),"Translated from simple data to StructuredData. Runtime:")
   }
@@ -138,6 +142,10 @@ post_udf.json = function(req,res, debug=FALSE) {
   if (length(json_out) == 1) {
     json_out = json_out[[1]]
   } else {
+    data_model = list(user_context=NA,
+                      server_context=NA,
+                      structured_data_list=NA, # array / list (multiple elements)
+                      data_collection=NA) 
     shell = json_out[[1]]
     shell$hypercubes = lapply(unname(json_out),function(obj) obj$hypercubes[[1]])
     shell$structured_data = lapply(unname(json_out),function(obj) obj$structured_data[[1]])

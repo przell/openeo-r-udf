@@ -2,9 +2,10 @@
 setClass("RasterCollectionTile")
 setClass("HyperCube")
 setClass("StructuredData")
+setClass("DataCollection") # new one!
 
 # raster collection tile -> stars ----
-as.RasterCollectionTile.stars = function(from) {
+as.stars.RasterCollectionTile = function(from) {
   # raster_collection_tile order: [band][time][y][x]
   arr = abind::abind(band=from$raster_collection_tiles$data,along=0)
 
@@ -36,10 +37,10 @@ as.RasterCollectionTile.stars = function(from) {
   names(s)=c("value")
   return(s)
 }
-setAs(from="RasterCollectionTile",to="stars",def=as.RasterCollectionTile.stars)
+setAs(from="RasterCollectionTile",to="stars",def=as.stars.RasterCollectionTile)
 
 # hypercube -> stars ----
-as.HyperCube.stars = function(from) {
+as.stars.HyperCube = function(from) {
 
   stars_objs = apply(from$hypercubes,MARGIN = 1,FUN = function(row) {
     dimensions = row$dimensions #potentially multi row
@@ -94,10 +95,10 @@ as.HyperCube.stars = function(from) {
   return(stars_objs)
 
 }
-setAs(from="HyperCube",to="stars",def=as.HyperCube.stars)
+setAs(from="HyperCube",to="stars",def=as.stars.HyperCube)
 
 # stars -> raster collection tiles ----
-as.stars.RasterCollectionTiles = function(from) {
+as.RasterCollectionTiles.stars = function(from) {
   # predefined dimension names [band][time][y][x]
   order = c("band","time","y","x")
   from = aperm(from, order[order %in% names(dim(from))])
@@ -164,11 +165,11 @@ as.stars.RasterCollectionTiles = function(from) {
     raster_collection_tiles=bands
   ))
 }
-setAs(to="RasterCollectionTile",from="stars",def=as.stars.RasterCollectionTiles)
+setAs(to="RasterCollectionTile",from="stars",def=as.RasterCollectionTiles.stars)
 
 
 # stars -> hypercube ----
-as.stars.HyperCube = function(from) {
+as.HyperCube.stars = function(from) {
   dimnames=names(st_dimensions(from))
   dimensions = lapply(dimnames, function (dim) {
     list(name=dim,
@@ -190,7 +191,148 @@ as.stars.HyperCube = function(from) {
               )
   ))
 }
-setAs(to="HyperCube",from="stars",def=as.stars.HyperCube)
+setAs(to="HyperCube",from="stars",def=as.HyperCube.stars)
+
+# stars -> data_collection ----
+as.data_collection.stars = function(x) {
+  if ("stars" %in% class(x)) {
+    x = list(x)
+  }
+  
+  if (!all(sapply(x,function(obj)"stars"==class(obj)))) stop("Not all elements in x as a list are stars objects.")
+  
+  result = list()
+  result$geometry_collection = list()
+  result$type = "DataCollection"
+  
+  # meta data element
+  md = list()
+  md$name="r-udf-result"
+  md$description="a result"
+  md$creator="R-UDF-service"
+  md$creation_time=format(now(),format="%Y%m%dT%H%M%SZ")
+  #TODO this needs to be adapted
+  md$number_of_object_collections = 0 
+  md$number_of_geometries = 0
+  md$number_of_variables = 0
+  md$number_of_time_stamps = 0
+  
+  data_cubes = lapply(1:length(x), function(index) {
+    obj = x[[index]]
+    # create data cube descriptions
+    dc = list()
+    dc$name = "data_cube"
+    dc$description = "structural description of the dimensionality of the result"
+    dc$dim = dimnames(obj)
+    dc$size = unname(dim(obj))
+    #TODO has to be set...
+    dc$variable_collection = index-1
+    
+    dims = st_dimensions(obj)
+    dim_models = lapply(names(dims), function(key) {
+      d = dims[[key]]
+      
+      if ("POSIXct" %in% class(d$values)) {
+        d$values = format(d$values,format="%Y%m%dT%H%M%SZ")
+      }
+      
+      if (!length(d$values) == 0 && !is.na(d$values)) {
+        ex = d$values[c(d$from,d$to)]
+        vals = d$values
+        nums = length(d$values)
+      } else {
+        ex = d$offset + c(d$from-1,d$to) *d$delta
+        vals = list()
+        nums = d$to
+      }
+      
+      type = switch(key,
+                    x="spatial",
+                    y="spatial",
+                    z="spatial",
+                    t = "temporal",
+                    band="bands",
+                    "other")
+      
+      
+      # TODO correct this / categorical values or leave out
+      unit = switch(type,
+                    spatial={
+                      switch(key,
+                             x="m",
+                             y="m",
+                             z="m")  
+                    },
+                    temporal = "ISO8601",
+                    band="nm",
+                    {
+                      if (!is.na(d$refsys) && d$refsys == "POSIXct") {
+                        "ISO8601"
+                      } else {
+                        NA
+                      }
+                    })
+      
+      if (type == "spatial" && !is.na(d$refsys)) {
+        crs=st_crs(d$refsys)
+        refsys = crs$epsg
+      } else if (type == "temporal"){
+        refsys = "gregorian"
+      } else {
+        refsys = NA
+      }
+      
+      
+      dim = list(
+        extent=ex,
+        values = vals,
+        number_of_cells = nums,
+        axis=key,
+        type=type,
+        unit = unit,
+        reference_system = refsys
+      )
+      
+      return(dim)
+    })
+    
+    dc$dimensions = dim_models
+    
+    return(dc)
+  })
+  
+  result$object_collections = list()
+  result$object_collections$data_cubes = data_cubes
+  
+  result$variable_collections = list()
+  # create variables
+  vars = lapply(1:length(x), function(index) {
+    obj = x[[index]]
+    
+    vcoll = list(
+      name="cube_data",
+      size = unname(dim(obj)),
+      number_of_variables = length(names(obj)),
+      variables = lapply(names(obj), function(variable_name) {
+        data = obj[[variable_name]]
+        variable = list(
+          name = variable_name,
+          values = as.vector(data)
+        )
+        return(variable)
+      })
+    )
+    return(vcoll)
+  })
+  
+  result$variable_collections = vars
+  result$metadata$number_of_variables = length(result$variable_collections)
+  
+  class(result) = "DataCollection"
+  
+  return(result)
+}
+setAs(to="DataCollection",from="stars",def=as.data_collection.stars)
 
 # simple data -> structured data ----
 as.StructuredData = function(from) {
