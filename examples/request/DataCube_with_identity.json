@@ -1,6 +1,6 @@
 {
   "code": {
-    "source": "# @require x:stars\n\nbrowser()\nx\n",
+    "source": "# @require x:stars\n\nx\n",
     "language": "r"
   } ,
   "data": {

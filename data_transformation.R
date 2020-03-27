@@ -156,7 +156,16 @@ apply_dimensionality = function(dc,vc) {
         x = st_set_dimensions(x, which=dim_name,values=values)
       }
     }
+    
     if (!is.na(spatial_refsys)) {
+      
+      suppressWarnings({
+        if (!is.na(as.numeric(spatial_refsys))) {
+          spatial_refsys = as.numeric(spatial_refsys)
+        }
+        #TODO potentially check for PROJ4JSON or WKT
+      })
+      
       x = st_set_crs(x,spatial_refsys)
     }
     
@@ -332,7 +341,7 @@ as.DataCube.stars = function(from) {
   md$description="a result"
   md$creator="R-UDF-service"
   md$creation_time=format(now(),format="%Y%m%dT%H%M%SZ")
-  #TODO this needs to be adapted
+  #this will be adapted later
   md$number_of_object_collections = 0 
   md$number_of_geometries = 0
   md$number_of_variables = 0
@@ -346,7 +355,6 @@ as.DataCube.stars = function(from) {
     dc$description = "structural description of the dimensionality of the result"
     dc$dim = dimnames(obj)
     dc$size = unname(dim(obj))
-    #TODO has to be set...
     dc$variable_collection = index-1
     
     dims = st_dimensions(obj)
@@ -458,6 +466,7 @@ as.DataCube.stars = function(from) {
     data_collection=result))
 }
 setAs(to="DataCube",from="stars",def=as.DataCube.stars)
+setAs(to="DataCube",from="list",def=as.DataCube.stars)
 
 # simple data -> structured data ----
 as.StructuredData = function(from) {

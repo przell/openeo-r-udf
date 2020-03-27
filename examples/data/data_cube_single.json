@@ -39,7 +39,7 @@
               "axis": "x",
               "type": "spatial",
               "unit": "m",
-              "reference_system": null
+              "reference_system": 25832
             },
             {
               "extent": [5760430, 5760530],
@@ -48,7 +48,7 @@
               "axis": "y",
               "type": "spatial",
               "unit": "m",
-              "reference_system": null
+              "reference_system": 25832
             }
           ]
         }
