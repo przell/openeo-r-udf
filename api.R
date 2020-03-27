@@ -64,6 +64,7 @@ check_data = function(req, res) {
     req$code = json_in$code
     req$data = json_in$data
 
+
     if (length(req$data$raster_collection_tiles) > 0) {
       class(req$data) = "RasterCollectionTile"
     } else if (length(req$data$hypercubes) > 0) {
@@ -102,10 +103,10 @@ post_udf.json = function(req,res, debug=FALSE) {
 
   # prepare the executable code
   fun = .prepare_udf_function(code = req$code$source)
-
+  
   # if data requirements states something else than stars we need to convert it
   data_requirement = .read_data_requirement(req$code$source)
-
+  
   if (length(data_requirement) > 0) {
     if (length(data_requirement$variable_name) > 0) {
       #replace variable name in fun
@@ -242,11 +243,11 @@ get_installed_libraries = function() {
 
 
 .translate_input_data = function(data,data_requirement=NULL) {
-  if ("HyperCube" %in% class(data)) {
+  if (any(c("HyperCube","DataCube") %in% class(data))) {
     data_in = .measure_time(quote(as(data,"stars")),"Translated list into stars. Runtime:")
   } else if ("StructuredData" %in% class(data)) {
     data_in = .measure_time(quote(as.StructuredData.base(data)),"Translated into simple data. Runtime:")
-  }
+  } 
 
   if (length(data_requirement) > 0) {
     if (length(data_requirement$target_class) > 0) {
