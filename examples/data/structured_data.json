@@ -1,1 +1,1 @@
-{"id":"udf_result","proj":{},"structured_data":[{"id":"value","type":"list","data":[1,2,3,4,5,6,7,8,9,10]}]}
+{"user_context":null,"server_context":null,"structured_data_list":[{"description":"value","type":"list","data":[1,2,3,4,5,6,7,8,9,10]}]}

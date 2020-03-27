@@ -459,11 +459,7 @@ as.DataCube.stars = function(from) {
   result$variable_collections = vars
   result$metadata$number_of_variables = length(result$variable_collections)
   
-  return(list(
-    description = "",
-    user_context = list(),
-    server_context = list(),
-    data_collection=result))
+  return(result)
 }
 setAs(to="DataCube",from="stars",def=as.DataCube.stars)
 setAs(to="DataCube",from="list",def=as.DataCube.stars)

@@ -120,7 +120,13 @@ post_udf.json = function(req,res, debug=FALSE) {
     data_in = .translate_input_data(data = req$data, data_requirement)
   
     # run the UDF
-    results = list(.measure_time(quote(do.call(fun,args = list(data_in))),"Executed script. Runtime:"))
+    if (class(data_in) == "stars" || (is.list(data_in) && class(data_in[[1]]) == "stars")) {
+      results = list(.measure_time(quote(do.call(fun,args = list(data_in))),"Executed script. Runtime:"))
+    } else {
+      # mainly for a multitude of structured data (e.g. multiple timeseries)
+      results = list(.measure_time(quote(lapply(data_in, fun)),"Executed script. Runtime:"))
+    }
+    
   
     # map to stars or keep simple data types
     results = lapply(1:length(results), function(index) {
@@ -141,38 +147,11 @@ post_udf.json = function(req,res, debug=FALSE) {
       if (! all(sapply(results,function(res)"stars"==class(res)))) {
         stop("All data outputs have to be of class 'stars' or any structured data. Mixed types not supported, yet.")
       }
-      # json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"HyperCube"))),"Translated from stars to Hypercube Runtime:")
-      json_out = .measure_time(quote(as(results,"DataCube")),"Translated from stars to DataCollection. Runtime:")
-      
-      # extract variables
-      # variables = list()
-      # for(i in 1:length(data_cubes)) {
-      #   variables[[i]] = data_cubes[[i]]$variable_collection
-      #   data_cubes[[i]]$variable_collection = i-1
-      # }
-      # 
-      # json_out = list(
-      #   server_context=NA,
-      #   user_context=NA,
-      #   data_collection = list(
-      #     object_collection = list(
-      #       data_cubes = data_cubes
-      #     ),
-      #     variable_collections = variables,
-      #     metadata = list(
-      #       name="R-UDF result",
-      #       description="return value of an R UDF service",
-      #       number_of_object_collections = length(data_cubes),
-      #       number_of_geometries = 0,
-      #       number_of_variable_collections = length(variables),
-      #       number_of_time_stamps = 0,
-      #       creator="R-UDF service",
-      #       creation_time=format(lubridate::now(),format="%Y%m%dT%H%M%SZ"),
-      #       link = NA,
-      #       userdata=NA
-      #     )
-      #   )
-      # )
+      json_out = list(
+        user_context = NA,
+        server_context = NA,
+        data_collection=.measure_time(quote(as(results,"DataCube")),"Translated from stars to DataCollection. Runtime:"))
+        
     } else {
       json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"StructuredData"))),"Translated from simple data to StructuredData. Runtime:")
       
