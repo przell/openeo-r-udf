@@ -466,7 +466,6 @@ setAs(to="DataCube",from="list",def=as.DataCube.stars)
 
 # simple data -> structured data ----
 as.StructuredData = function(from) {
-
   if (!any(class(from) %in% c("list","numeric","integer","character","factor","logical","matrix","data.frame")) || length(from) == 0) {
     stop("Cannot create 'StructuredData' output for given object. Either the data is no simple type or it is NULL.")
   }
@@ -524,9 +523,9 @@ setAs(from = "data.frame", to="StructuredData",def = as.StructuredData)
 # structured data -> simple / basic data types ----
 as.StructuredData.base = function(from) {
   # from$structured_data_list should be an array / list?
-  if (class(from$structured_data_list) == "data.frame") {
-    rowwise = unname(split(from$structured_data,row(from$structured_data)))
-    return(lapply(rowwise, function(sd){
+  if (is.list(from$structured_data_list)) {
+    
+    return(lapply(from$structured_data_list, function(sd){
       switch(sd$type,
              table={
                data = sd$data[[1]]
@@ -551,7 +550,5 @@ as.StructuredData.base = function(from) {
                return(unlist(sd$data))
              })
     }))
-  }
-
-
+  } 
 }

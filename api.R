@@ -53,7 +53,13 @@ check_data = function(req, res) {
       print(Sys.time()-as_datetime(as.numeric(req$HEADERS["date"]),tz=Sys.timezone()))
     }
 
-    json_in = .measure_time(quote(jsonlite::fromJSON(req$postBody)),"Read json. Runtime:")
+    if (grepl(x = req$postBody,pattern = "structured_data_list")) {
+      json_in = .measure_time(quote(jsonlite::fromJSON(req$postBody,simplifyVector=FALSE)),"Read json. Runtime:")
+    } else {
+      json_in = .measure_time(quote(jsonlite::fromJSON(req$postBody)),"Read json. Runtime:")
+    }
+    
+    
 
     req$postBody = NULL
     if (is.null(json_in$code$language) || !tolower(json_in$code$language)=="r") {
@@ -64,7 +70,7 @@ check_data = function(req, res) {
     req$code = json_in$code
     req$data = json_in$data
 
-
+    # TODO split user_context and server_context and append also to req
     if (length(req$data$raster_collection_tiles) > 0) {
       class(req$data) = "RasterCollectionTile"
     } else if (length(req$data$hypercubes) > 0) {
@@ -120,13 +126,14 @@ post_udf.json = function(req,res, debug=FALSE) {
     data_in = .translate_input_data(data = req$data, data_requirement)
   
     # run the UDF
-    if (class(data_in) == "stars" || (is.list(data_in) && class(data_in[[1]]) == "stars")) {
+    if (length(data_in) == 0) {
+      stop("error while reading the input data")
+    } else if (class(data_in) == "stars" || (is.list(data_in) && class(data_in[[1]]) == "stars")) {
       results = list(.measure_time(quote(do.call(fun,args = list(data_in))),"Executed script. Runtime:"))
     } else {
       # mainly for a multitude of structured data (e.g. multiple timeseries)
       results = list(.measure_time(quote(lapply(data_in, fun)),"Executed script. Runtime:"))
     }
-    
   
     # map to stars or keep simple data types
     results = lapply(1:length(results), function(index) {
@@ -225,6 +232,7 @@ get_installed_libraries = function() {
 
 
 .translate_input_data = function(data,data_requirement=NULL) {
+  
   if (any(c("HyperCube","DataCube") %in% class(data))) {
     data_in = .measure_time(quote(as(data,"stars")),"Translated list into stars. Runtime:")
   } else if ("StructuredData" %in% class(data)) {
