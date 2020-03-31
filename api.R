@@ -44,6 +44,8 @@ source("data_transformation.R")
 #* Interprete JSON, divide code and data and assign classes
 #* @filter check-data
 check_data = function(req, res) {
+  # TODO check the endpoint called /udf -> ok, /udf_legacy -> another filter should be called
+  
   if (DEBUG) {
     cat("=== Started executing at endpoint /udf ===\n")
   }
@@ -68,20 +70,22 @@ check_data = function(req, res) {
     }
 
     req$code = json_in$code
-    req$data = json_in$data
-
-    # TODO split user_context and server_context and append also to req
-    if (length(req$data$raster_collection_tiles) > 0) {
-      class(req$data) = "RasterCollectionTile"
-    } else if (length(req$data$hypercubes) > 0) {
-      class(req$data) = "HyperCube"
-    } else if (length(req$data$structured_data) > 0 || length(req$data$structured_data_list) > 0) {
+    req$data = json_in$data # data is the UDF data model
+    
+    # split user_context and server_context and append also to req
+    req$user_context = if (length(json_in$data$user_context) == 0) list() else json_in$data$user_context
+    json_in$data$user_context = NULL
+    
+    req$server_context = if (length(json_in$data$server_context) == 0) list() else json_in$data$server_context
+    json_in$data$server_context = NULL
+    
+    if (length(req$data$structured_data_list) > 0) {
       class(req$data) = "StructuredData"
     } else if (length(req$data$data_collection$object_collections$data_cubes) > 0) {
       class(req$data) = "DataCube"
     } else {
       res$status = 422
-      return(list(error = "Data other than RasterCollectionTile, Hypercube and StructuredData are not supported yet."))
+      return(list(error = "Data other than 'StructuredData' and 'DataCube' as a special case of a DataCollection are not supported right now."))
     }
   }
   plumber::forward()
@@ -116,9 +120,8 @@ post_udf.json = function(req,res, debug=FALSE) {
     
     if (length(data_requirement) > 0) {
       if (length(data_requirement$variable_name) > 0) {
-        #replace variable name in fun
-        names(formals(fun)) = data_requirement$variable_name
-        # TODO when we use the context this needs to be accounted for!
+        #replace variable name in fun, but keep the variable "context" which describes the user context
+        names(formals(fun)) = c(data_requirement$variable_name,"context")
       }
     }
   
@@ -129,10 +132,10 @@ post_udf.json = function(req,res, debug=FALSE) {
     if (length(data_in) == 0) {
       stop("error while reading the input data")
     } else if (class(data_in) == "stars" || (is.list(data_in) && class(data_in[[1]]) == "stars")) {
-      results = list(.measure_time(quote(do.call(fun,args = list(data_in))),"Executed script. Runtime:"))
+      results = list(.measure_time(quote(do.call(fun,args = list(data_in,req$user_context))),"Executed script. Runtime:"))
     } else {
       # mainly for a multitude of structured data (e.g. multiple timeseries)
-      results = list(.measure_time(quote(lapply(data_in, fun)),"Executed script. Runtime:"))
+      results = list(.measure_time(quote(lapply(data_in, fun, context = req$user_context)),"Executed script. Runtime:"))
     }
   
     # map to stars or keep simple data types
@@ -155,16 +158,16 @@ post_udf.json = function(req,res, debug=FALSE) {
         stop("All data outputs have to be of class 'stars' or any structured data. Mixed types not supported, yet.")
       }
       json_out = list(
-        user_context = NA,
-        server_context = NA,
+        user_context = if (length(req$user_context) == 0) NA else length(req$user_context),
+        server_context = if (length(req$server_context) == 0) NA else req$server_context,
         data_collection=.measure_time(quote(as(results,"DataCube")),"Translated from stars to DataCollection. Runtime:"))
         
     } else {
       json_out = .measure_time(quote(lapply(results,function(obj) as(obj,"StructuredData"))),"Translated from simple data to StructuredData. Runtime:")
       
       json_out = list(
-        user_context=NA,
-        server_context=NA,
+        user_context = if (length(req$user_context) == 0) NA else length(req$user_context),
+        server_context = if (length(req$server_context) == 0) NA else req$server_context,
         structured_data_list = json_out
       )
     }
@@ -172,7 +175,11 @@ post_udf.json = function(req,res, debug=FALSE) {
     rm(results)
   
     # Create the JSON structure
-    json = .measure_time(quote(jsonlite::toJSON(json_out,auto_unbox = TRUE,force=TRUE)),"Prepared JSON from list. Runtime:")
+    json = .measure_time(quote(jsonlite::toJSON(json_out,
+                                                auto_unbox = TRUE,
+                                                force=TRUE,
+                                                digits = if (length(req$server_context$export_digits) == 0) 4 else req$server_context$export_digits)),
+                         "Prepared JSON from list. Runtime:")
   }, error = function(e) {
     json = jsonlite::toJSON(e,auto_unbox = T,force=T)
     res$status = 500
@@ -212,7 +219,7 @@ get_installed_libraries = function() {
 
 .prepare_udf_function = function(code) {
   fun = function() {}
-  formals(fun) = alist(data=) #TODO also metadata from run_udf (processes api)
+  formals(fun) = alist(data=,context=) #TODO also metadata from run_udf (processes api)
 
   tryCatch({
     if (!startsWith(code,"{")) {
