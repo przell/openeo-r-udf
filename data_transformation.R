@@ -2,6 +2,7 @@
 setClass("RasterCollectionTile")
 setClass("HyperCube")
 setClass("StructuredData")
+setClass("StructuredDataLegacy")
 setClass("DataCube") # new one!
 
 # raster collection tile -> stars ----
@@ -551,4 +552,96 @@ as.StructuredData.base = function(from) {
              })
     }))
   } 
+}
+
+# structured data legacy ====
+
+# simple data -> structured data ----
+as.StructuredDataLegacy = function(from) {
+  
+  if (!any(class(from) %in% c("list","numeric","integer","character","factor","logical","matrix","data.frame")) || length(from) == 0) {
+    stop("Cannot create 'StructuredData' output for given object. Either the data is no simple type or it is NULL.")
+  }
+  
+  if (class(from) %in% c("matrix","data.frame") && nrow(from) > 1) {
+    type = "table"
+  } else if (!is.null(names(from)) || !is.null(colnames(from))) {
+    type = "dict"
+  } else {
+    type = "list"
+  }
+  
+  # modify data
+  switch(type,
+         table={
+           # decompose into header, row1, row2, ..., rowN
+           data = unname(split(from,row(from)))
+           data = lapply(data,unname)
+           from = append(list(colnames(from)),data)
+           rm(data)
+         },
+         dict = {
+           if (!is.list(from)) {
+             names = names(from)
+             if (is.null(names)) {
+               names = colnames(from)
+             }
+             
+             from = as.list(from)
+             names(from) = names
+             
+           }
+         },
+         list = {
+           
+         })
+  
+  # 'proj' will be NULL, because we have no spatial dimension
+  return(list(
+    description="structured data", #TODO name dynamically
+    type=type,
+    data=from
+  ))
+}
+
+setAs(from = "list", to="StructuredDataLegacy",def = as.StructuredDataLegacy)
+setAs(from = "numeric", to="StructuredDataLegacy",def = as.StructuredDataLegacy)
+setAs(from = "character", to="StructuredDataLegacy",def = as.StructuredDataLegacy)
+setAs(from = "factor", to="StructuredDataLegacy",def = as.StructuredDataLegacy)
+setAs(from = "integer", to="StructuredDataLegacy",def = as.StructuredDataLegacy)
+setAs(from = "logical", to="StructuredDataLegacy",def = as.StructuredDataLegacy)
+setAs(from = "matrix", to="StructuredDataLegacy",def = as.StructuredDataLegacy)
+setAs(from = "data.frame", to="StructuredDataLegacy",def = as.StructuredDataLegacy)
+
+# structured data -> simple / basic data types ----
+as.StructuredDataLegacy.base = function(from) {
+  # from$structured_data_list should be an array / list?
+  if (class(from$structured_data_list) == "data.frame") {
+    rowwise = unname(split(from$structured_data,row(from$structured_data)))
+    return(lapply(rowwise, function(sd){
+      switch(sd$type,
+             table={
+               data = sd$data[[1]]
+               colnames = data[1,]
+               data=data[-1,]
+               colnames(data) = colnames
+               
+               row_types = sapply(data[1,],function(obj) {
+                 class(type.convert(obj,stringsAsFactors=FALSE))
+               })
+               
+               if (!all(row_types == row_types[[1]])) {
+                 data = as.data.frame(data)
+               }
+               
+               return(type.convert(data))
+             },
+             dict = {
+               return(sd$data)
+             },
+             list = {
+               return(unlist(sd$data))
+             })
+    }))
+  }
 }
