@@ -1,6 +1,19 @@
 # Changelog
 
-## [Unreleased]
+## [0.3] UDF API version 0.1.0
+
+### Added
+- overview diagram for the new data model
+- new examples for the DataCube model
+- added context options for users and server
+  * `export_digits` as server context now allows to controll the number of digits in the response json from the R-UDF service
+
+### Changed
+- old /udf endpoint is now /udf_legacy
+- old coerce functions for structured data are renamed with suffix legacy
+- old StructuredData is now StructuredDataLegacy
+
+## [0.2]
 
 ### Added
 - readded the `/examples/data` folder after it was temporarily removed

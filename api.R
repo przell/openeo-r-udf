@@ -3,8 +3,8 @@ library(abind)
 library(lubridate)
 library(xts)
 
-api_version = "0.1pre-alpha"
-r_udf_version = "0.2"
+api_version = "0.1.0"
+r_udf_version = "0.3.0"
 
 DEBUG = FALSE
 
