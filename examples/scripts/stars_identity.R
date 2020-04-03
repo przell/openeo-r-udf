@@ -1,0 +1,3 @@
+# @require x:stars
+
+x

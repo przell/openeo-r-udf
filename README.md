@@ -68,4 +68,18 @@ If you find yourself lacking some packages then you might want to have a look at
 If the R package requires system libraries you have to install them via the *Dockerfile*. There is a comment block telling you want to uncomment and configure.
 
 ## Usage
-For first code examples, please have a look at `/examples/getting_started.Rmd` or [its HTML version](/examples/getting_started.html). With the test data sets `/examples/data/hypercube.json`, `/examples/data/raster_collection_tile.json` and other examples with simple structured data you can start experimenting with OpenEO UDFs. In the markdown file there is a reference to the `send_udf` function of the [`openeo` package](https://github.com/Open-EO/openeo-r-client) that combines the code and the serialized data and sends it to the service for processing. The request is build according to the [API description](https://open-eo.github.io/openeo-udf/api_docs/). Currently the services offers the functionality for `POST /udf` with `HyperCubes`, `RasterCollectionTiles` and `StructuredData` as supported input data. The results are provided as a `Hypercube` or if the results are simple, then `StructuredData` is returned.
+For first code examples, please have a look at `/examples/getting_started.Rmd` or [its HTML version](/examples/getting_started.html). With the test data sets `/examples/data/hypercube.json`, `/examples/data/raster_collection_tile.json` and other examples with simple structured data you can start experimenting with OpenEO UDFs. In the markdown file there is a reference to the `send_udf` function of the [`openeo` package](https://github.com/Open-EO/openeo-r-client) that combines the code and the serialized data and sends it to the service for processing. The request is build according to the [API description](https://open-eo.github.io/openeo-udf/api_docs/). Currently the services offers the functionality for `POST /udf` with `DataCube` and `StructuredData` as supported input data. The results are provided as a `DataCube` or if the results are simple, then `StructuredData` is returned.
+
+It is possible to send multiple data elements to be processed in a single request as long as it is `StructuredData`. Due to the new UDF API it is no longer possible to process multiple `DataCube` or `Hypercube` in one single request. If multiple cubes are sent, then it is assumed that this data is coherent in itself, but requires a specific resampling in order to have a single dimensions object of a `DataCube`. Multiple dimension objects are translated into individual `stars` objects and provided as a `list` containing those `stars` objects. The list is then injected as argument into the user defined function. As a UDF developer you should keep this in mind, when you resolve different dimensionalities (e.g. different resolutions, regular vs. irregular dimensions) of openEO collections. You need then to address those listed `stars` objects by index.
+
+## Contexts
+Starting with the openEO UDF API version 0.1.0 we have options to pass on server parameters and user parameters. User context is made available in the UDF function. And server context is used to controll the behavior of R-UDF service.
+
+### User context
+Internally the UDF code is put into the body of the `function(data) {}`, where `data` can be renamed by the comment in the script file. With user context this function is now `function(data,context) {}`. As before `data` can renamed, but `context` will be a named list, which will keep this name. Adress the context values, with e.g. `context$x`.
+
+### Available Server context parameter
+| parameter | example | description |
+| --- | ---| --- |
+| `export_digits` | 5 | number of digits in the resulting JSON response, default 4 |
+
