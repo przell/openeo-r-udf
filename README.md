@@ -49,7 +49,22 @@ sudo apt-get install libudunits2-dev libgdal-dev -y
 ```
 
 ### Running the API locally
-Clone this repository and use RStudio (>= 1.2) to *plumb* `api.R`. Since version 1.2 RStudio allows to run plumbers *plumb* natively. But you can run the plumb also manually by executing the code in `server_start.R`. It will require the file `api.R` and `data_transformation.R`.
+Clone this repository and use RStudio (>= 1.2) to *plumb* `api.R`. Since version 1.2 RStudio allows to run plumbers *plumb* natively.
+Start up the api in rstudio.
+```
+library(plumber)
+r_udf = plumb(api.R)
+r_udf$run(port=5555)
+```
+To connect to the api open a second instance of rstudio and get for example the installed packages.
+```
+library(httr)
+library(jsonlite)
+pkg = GET("http://127.0.0.1:5555/packages")
+pkg = fromJSON(content(pkg, "text")
+```
+
+But you can run the plumb also manually by executing the code in `server_start.R`. It will require the file `api.R` and `data_transformation.R`.
 
 ### Using Docker
 Docker provides a virtual containerized environment for running software. In order to install this R package in a Docker environment, please follow these steps:
