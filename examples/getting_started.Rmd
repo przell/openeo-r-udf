@@ -180,10 +180,11 @@ The result of the run_udf is a JSON string that can be translated into an R obje
 Under the folder `/examples` of this repository there are different folders containing JSON objects for example data, some R scripts operating on different data, as well as the payloads of combined data and code fragments for processing.
 
 ### Debugging 
-You need a locally running UDF service instance started via plumber in rstudio. And a second rstudio session which is used to send requests to the locally running UDF service. This is described in [Prerequisits](#prerequisite). Furthermore, add `browse()` to the your R UDF script.
+You need a locally running UDF service instance started via plumber in rstudio. And a second rstudio session which is used to send requests to the locally running UDF service. This is described in [Prerequisits](#prerequisite). Furthermore, add `browser()` to the your R UDF script.
+
 ```{r, eval=FALSE}
-browse()
 script = quote({
+  browser()
   all_dim = names(dim(data))
   ndvi_result = st_apply(data, FUN = function(X,...) {
     (X[8]-X[4])/(X[8]+X[4])
@@ -195,7 +196,7 @@ script = quote({
   min_ndvi
 })
 ```
-Then use `send_udf()` as described above. Make sure that `browse()` is included in the file you pass to the argument `code = `.
+Then use `send_udf()` as described above. Make sure that `browser()` is included in the file you pass to the argument `code = `.
 ```{r, eval=FALSE}
 send_udf(data = "examples/data/hypercube.json",code = script,host=host,port=port)
 ```
